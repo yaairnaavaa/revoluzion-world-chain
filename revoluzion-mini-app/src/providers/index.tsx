@@ -7,21 +7,33 @@ import type { ReactNode } from 'react';
 import { WagmiProvider, createConfig, http } from 'wagmi';
 import { worldchain } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { injected } from 'wagmi/connectors';
 
 const ErudaProvider = dynamic(
   () => import('@/providers/Eruda').then((c) => c.ErudaProvider),
   { ssr: false },
 );
 
-// Wagmi config
+// Wagmi config with basic connectors
 const config = createConfig({
   chains: [worldchain],
+  connectors: [
+    injected()
+  ],
   transports: {
     [worldchain.id]: http(),
   },
+  ssr: false,
 });
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      staleTime: 60 * 1000, // 1 minute
+    },
+  },
+});
 
 // Define props for ClientProviders
 interface ClientProvidersProps {

@@ -136,19 +136,9 @@ contract PetitionRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable 
             "Insufficient RVZ balance to create petition"
         );
 
-        // Note: Token transfer will be handled by Permit2 from the frontend
-        // The frontend must use Permit2 to transfer tokens to this contract
-        // before or as part of calling this function
-        
-        // Verify that tokens were transferred to this contract
-        uint256 contractBalance = IRVZToken(rvzTokenAddress).balanceOf(address(this));
-        require(
-            contractBalance >= burnAmount,
-            "Tokens not transferred to contract"
-        );
-
-        // Burn the tokens from contract balance
-        IRVZToken(rvzTokenAddress).burn(burnAmount);
+        // Burn tokens directly from user's balance
+        // Note: User must have approved this contract to spend their tokens
+        IRVZToken(rvzTokenAddress).burnFrom(msg.sender, burnAmount);
 
         petitionCount++;
         petitions[petitionCount] = Petition({

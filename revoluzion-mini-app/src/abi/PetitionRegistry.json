@@ -33,7 +33,7 @@
   },
   {
     "inputs": [],
-    "name": "FailedInnerCall",
+    "name": "FailedCall",
     "type": "error"
   },
   {
@@ -189,6 +189,31 @@
     "inputs": [
       {
         "indexed": true,
+        "internalType": "address",
+        "name": "supporter",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "RewardClaimed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
         "internalType": "uint256",
         "name": "petitionId",
         "type": "uint256"
@@ -221,19 +246,6 @@
     ],
     "name": "Upgraded",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "UPGRADE_INTERFACE_VERSION",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
   },
   {
     "inputs": [],
@@ -410,24 +422,13 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "groupId",
+    "outputs": [
       {
         "internalType": "uint256",
         "name": "",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "hasSupported",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -446,6 +447,11 @@
         "type": "address"
       },
       {
+        "internalType": "address",
+        "name": "_worldIdRouterAddress",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
         "name": "_burnAmount",
         "type": "uint256"
@@ -459,6 +465,25 @@
     "name": "initialize",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "lastRewardAt",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -584,6 +609,19 @@
   },
   {
     "inputs": [],
+    "name": "rewardCooldown",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "rvzTokenAddress",
     "outputs": [
       {
@@ -601,6 +639,21 @@
         "internalType": "uint256",
         "name": "_petitionId",
         "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "root",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nullifierHash",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256[8]",
+        "name": "proof",
+        "type": "uint256[8]"
       }
     ],
     "name": "supportPetition",
@@ -637,6 +690,19 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_newGroupId",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateGroupId",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_newAddress",
         "type": "address"
@@ -663,12 +729,38 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_newCooldown",
+        "type": "uint256"
+      }
+    ],
+    "name": "updateRewardCooldown",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_newAddress",
         "type": "address"
       }
     ],
     "name": "updateRVZTokenAddress",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_newAddress",
+        "type": "address"
+      }
+    ],
+    "name": "updateWorldIdRouter",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -689,6 +781,19 @@
     "name": "upgradeToAndCall",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "worldIdRouter",
+    "outputs": [
+      {
+        "internalType": "contract IWorldID",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   }
 ] 

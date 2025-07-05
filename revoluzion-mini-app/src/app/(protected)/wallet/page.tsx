@@ -4,31 +4,119 @@ import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import { RVZ_TOKEN_ADDRESS, WLD_TOKEN_ADDRESS } from '@/lib/contracts';
 import { useAccount, useBalance } from 'wagmi';
+import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { createPublicClient, http } from 'viem';
+import { worldchain } from 'viem/chains';
+import { erc20Abi } from 'viem';
 
 export default function Wallet() {
   const { address } = useAccount();
+  const { data: session } = useSession();
+  const [debugInfo, setDebugInfo] = useState<any>({});
 
-  const { data: rvzBalanceData, isLoading: isRvzBalanceLoading } = useBalance({
-    address,
+  // Use wagmi for balance fetching
+  const walletAddress = address || session?.user?.walletAddress;
+  
+  const { data: rvzBalanceData, isLoading: isRvzBalanceLoading, error: rvzError } = useBalance({
+    address: walletAddress as `0x${string}`,
     token: RVZ_TOKEN_ADDRESS,
   });
 
-  const { data: wldBalanceData, isLoading: isWldBalanceLoading } = useBalance({
-    address,
+  const { data: wldBalanceData, isLoading: isWldBalanceLoading, error: wldError } = useBalance({
+    address: walletAddress as `0x${string}`,
     token: WLD_TOKEN_ADDRESS,
   });
+
+  // Alternative balance fetching using viem directly
+  const [viemBalances, setViemBalances] = useState<{
+    rvz: string | null;
+    wld: string | null;
+  }>({ rvz: null, wld: null });
+
+  useEffect(() => {
+    const fetchBalancesWithViem = async () => {
+      // Use wagmi address first, fallback to session address
+      const walletAddress = address || session?.user?.walletAddress;
+      if (!walletAddress) return;
+
+      const client = createPublicClient({
+        chain: worldchain,
+        transport: http(),
+      });
+
+      try {
+        // Try to fetch RVZ balance with viem
+        if (RVZ_TOKEN_ADDRESS && RVZ_TOKEN_ADDRESS !== '0x') {
+          const rvzBalance = await client.readContract({
+            address: RVZ_TOKEN_ADDRESS,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [walletAddress as `0x${string}`],
+          });
+          const rvzDecimals = await client.readContract({
+            address: RVZ_TOKEN_ADDRESS,
+            abi: erc20Abi,
+            functionName: 'decimals',
+          });
+          setViemBalances(prev => ({
+            ...prev,
+            rvz: (Number(rvzBalance) / Math.pow(10, rvzDecimals)).toFixed(4)
+          }));
+        }
+
+        // Try to fetch WLD balance with viem
+        if (WLD_TOKEN_ADDRESS && WLD_TOKEN_ADDRESS !== '0x') {
+          const wldBalance = await client.readContract({
+            address: WLD_TOKEN_ADDRESS,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [walletAddress as `0x${string}`],
+          });
+          const wldDecimals = await client.readContract({
+            address: WLD_TOKEN_ADDRESS,
+            abi: erc20Abi,
+            functionName: 'decimals',
+          });
+          setViemBalances(prev => ({
+            ...prev,
+            wld: (Number(wldBalance) / Math.pow(10, wldDecimals)).toFixed(4)
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching balances with viem:', error);
+      }
+    };
+
+    fetchBalancesWithViem();
+  }, [address, session?.user?.walletAddress]);
+
+  // Debug information
+  useEffect(() => {
+    setDebugInfo({
+      wagmiAddress: address,
+      sessionAddress: session?.user?.walletAddress,
+      combinedAddress: walletAddress,
+      rvzTokenAddress: RVZ_TOKEN_ADDRESS,
+      wldTokenAddress: WLD_TOKEN_ADDRESS,
+      rvzError: rvzError?.message,
+      wldError: wldError?.message,
+      rvzBalanceData: rvzBalanceData,
+      wldBalanceData: wldBalanceData,
+    });
+  }, [address, session, rvzBalanceData, wldBalanceData, rvzError, wldError, walletAddress]);
 
   const rvzBalanceDisplay = isRvzBalanceLoading
     ? 'Loading...'
     : rvzBalanceData
     ? parseFloat(rvzBalanceData.formatted).toFixed(4)
-    : '0.0000';
+    : viemBalances.rvz || '0.0000';
 
   const wldBalanceDisplay = isWldBalanceLoading
     ? 'Loading...'
     : wldBalanceData
     ? parseFloat(wldBalanceData.formatted).toFixed(4)
-    : '0.0000';
+    : viemBalances.wld || '0.0000';
 
   // Mock data for transactions - will be replaced in the future
   const mockTransactions = [
@@ -38,11 +126,11 @@ export default function Wallet() {
   ];
 
   const totalValueDisplay =
-    isRvzBalanceLoading || !rvzBalanceData || isWldBalanceLoading || !wldBalanceData
+    isRvzBalanceLoading || isWldBalanceLoading
       ? '...'
       : `$${(
-          parseFloat(rvzBalanceData.formatted) * 0.15 + // Mock price for RVZ
-          parseFloat(wldBalanceData.formatted) * 2.5 // Mock price for WLD
+          parseFloat(rvzBalanceDisplay) * 0.15 + // Mock price for RVZ
+          parseFloat(wldBalanceDisplay) * 2.5 // Mock price for WLD
         ).toFixed(2)}`;
 
   return (
@@ -78,7 +166,7 @@ export default function Wallet() {
                 {totalValueDisplay}
               </p>
               <div className="mt-4 text-xs text-gray-400 truncate">
-                {address ?? 'Not connected'}
+                {walletAddress ?? 'Not connected'}
               </div>
             </div>
           </div>
@@ -87,10 +175,28 @@ export default function Wallet() {
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
               <h3 className="text-sm font-medium text-gray-500">RVZ Balance</h3>
               <p className="text-2xl font-bold text-gray-900 mt-1">{rvzBalanceDisplay}</p>
+              {rvzError && <p className="text-xs text-red-500 mt-1">Error: {rvzError.message}</p>}
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
               <h3 className="text-sm font-medium text-gray-500">WLD Balance</h3>
               <p className="text-2xl font-bold text-gray-900 mt-1">{wldBalanceDisplay}</p>
+              {wldError && <p className="text-xs text-red-500 mt-1">Error: {wldError.message}</p>}
+            </div>
+          </div>
+
+          {/* Debug Information - Remove in production */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-yellow-800 mb-2">Debug Info:</h4>
+            <div className="text-xs text-yellow-700 space-y-1">
+              <p><strong>Wagmi Address:</strong> {debugInfo.wagmiAddress || 'Not connected'}</p>
+              <p><strong>Session Address:</strong> {debugInfo.sessionAddress || 'Not available'}</p>
+              <p><strong>Combined Address:</strong> {debugInfo.combinedAddress || 'Not available'}</p>
+              <p><strong>RVZ Token:</strong> {debugInfo.rvzTokenAddress}</p>
+              <p><strong>WLD Token:</strong> {debugInfo.wldTokenAddress}</p>
+              <p><strong>Viem RVZ Balance:</strong> {viemBalances.rvz || 'Not fetched'}</p>
+              <p><strong>Viem WLD Balance:</strong> {viemBalances.wld || 'Not fetched'}</p>
+              {debugInfo.rvzError && <p><strong>RVZ Error:</strong> {debugInfo.rvzError}</p>}
+              {debugInfo.wldError && <p><strong>WLD Error:</strong> {debugInfo.wldError}</p>}
             </div>
           </div>
 

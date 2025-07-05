@@ -14,12 +14,17 @@ import {
   RVZ_TOKEN_ADDRESS,
 } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
+import { useSession } from 'next-auth/react';
 
 // Standard burn amount - you should fetch this from the contract
 const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
 
 const CreatePetitionPage = () => {
   const { address } = useAccount();
+  const { data: session } = useSession();
+  
+  // Use wagmi address first, fallback to session address
+  const walletAddress = address || session?.user?.walletAddress;
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -29,6 +34,17 @@ const CreatePetitionPage = () => {
   const [transactionId, setTransactionId] = useState<string>('');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [contractInfo, setContractInfo] = useState<{
+    rvzTokenAddress: string | null;
+    permit2Address: string | null;
+    burnAmount: string | null;
+    isInitialized: boolean;
+  }>({
+    rvzTokenAddress: null,
+    permit2Address: null,
+    burnAmount: null,
+    isInitialized: false,
+  });
 
   // Feel free to use your own RPC provider for better performance
   const client = createPublicClient({
@@ -48,6 +64,56 @@ const CreatePetitionPage = () => {
     },
     transactionId: transactionId,
   });
+
+  // Fetch contract configuration on component mount
+  useEffect(() => {
+    const fetchContractInfo = async () => {
+      if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
+        console.warn('PetitionRegistry contract address not set.');
+        return;
+      }
+
+      try {
+        const [contractRvzAddress, contractPermit2Address, contractBurnAmount] = await Promise.all([
+          client.readContract({
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'rvzTokenAddress',
+          }),
+          client.readContract({
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'permit2Address',
+          }),
+          client.readContract({
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'burnAmount',
+          }),
+        ]);
+
+        setContractInfo({
+          rvzTokenAddress: contractRvzAddress as string,
+          permit2Address: contractPermit2Address as string,
+          burnAmount: (contractBurnAmount as bigint).toString(),
+          isInitialized: true,
+        });
+
+        console.log('Contract configuration:', {
+          contractRvzAddress,
+          configuredRvzAddress: RVZ_TOKEN_ADDRESS,
+          match: contractRvzAddress === RVZ_TOKEN_ADDRESS,
+          contractPermit2Address,
+          configuredPermit2Address: PERMIT2_ADDRESS,
+          contractBurnAmount: (contractBurnAmount as bigint).toString(),
+        });
+      } catch (error) {
+        console.error('Error fetching contract info:', error);
+      }
+    };
+
+    fetchContractInfo();
+  }, []);
 
   useEffect(() => {
     if (transactionId && !isConfirming) {
@@ -101,14 +167,84 @@ const CreatePetitionPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
+    console.log('Form submitted, starting validation...');
+    console.log('Current form data:', formData);
+    
+    // Run validation and get the errors directly
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (formData.title.length < 10) {
+      newErrors.title = 'Title must be at least 10 characters long';
+    }
+    
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    } else if (formData.description.length < 50) {
+      newErrors.description = 'Description must be at least 50 characters long';
+    }
+    
+    if (formData.goal < 1) {
+      newErrors.goal = 'Goal must be at least 1 supporter';
+    }
+    
+    setErrors(newErrors);
+    
+    if (Object.keys(newErrors).length > 0) {
+      console.error('Form validation failed:', newErrors);
       return;
     }
 
-    if (!address) {
+    if (!walletAddress) {
       console.error('No wallet connected');
       setSubmitStatus('error');
       return;
+    }
+
+    // Check token configuration
+    if (contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS) {
+      console.error('Token configuration mismatch:', {
+        contractToken: contractInfo.rvzTokenAddress,
+        configuredToken: RVZ_TOKEN_ADDRESS
+      });
+      setSubmitStatus('error');
+      return;
+    }
+
+    // Check if user has enough RVZ tokens
+    const actualBurnAmount = contractInfo.burnAmount || BURN_AMOUNT;
+    try {
+      const userBalance = await client.readContract({
+        address: RVZ_TOKEN_ADDRESS as `0x${string}`,
+        abi: [
+          {
+            "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+            "name": "balanceOf",
+            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "stateMutability": "view",
+            "type": "function"
+          }
+        ],
+        functionName: 'balanceOf',
+        args: [walletAddress as `0x${string}`],
+      });
+
+      console.log('User RVZ balance:', userBalance.toString());
+      console.log('Required burn amount:', actualBurnAmount);
+
+      if (BigInt(userBalance.toString()) < BigInt(actualBurnAmount)) {
+        console.error('Insufficient RVZ balance:', {
+          userBalance: userBalance.toString(),
+          required: actualBurnAmount
+        });
+        setSubmitStatus('error');
+        setIsSubmitting(false);
+        return;
+      }
+    } catch (balanceError) {
+      console.error('Error checking user balance:', balanceError);
+      // Continue anyway - let the transaction fail if needed
     }
 
     setIsSubmitting(true);
@@ -121,29 +257,26 @@ const CreatePetitionPage = () => {
       const deadline = Math.floor(Date.now() / 1000) + 30 * 60; // 30 minutes from now
       const nonce = Date.now(); // Use timestamp as nonce for simplicity
 
-      const permitTransfer = {
-        permitted: {
-          token: RVZ_TOKEN_ADDRESS,
-          amount: BURN_AMOUNT,
-        },
-        nonce: nonce.toString(),
-        deadline: deadline.toString(),
-      };
-
+      // Use the contract's burn amount instead of hardcoded value
+      
       console.log('Creating petition with Permit2:', {
         title: formData.title,
         description: formData.description,
         goal: formData.goal,
-        permitTransfer,
+        burnAmount: BURN_AMOUNT,
+        contractBurnAmount: actualBurnAmount,
+        deadline,
+        nonce,
         petitionRegistry: PETITION_REGISTRY_ADDRESS,
         rvzToken: RVZ_TOKEN_ADDRESS,
-        permit2: PERMIT2_ADDRESS
+        permit2: PERMIT2_ADDRESS,
+        walletAddress
       });
 
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
           {
-            address: PETITION_REGISTRY_ADDRESS,
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
             abi: PetitionRegistryABI,
             functionName: 'createPetitionWithPermit2',
             args: [
@@ -153,29 +286,42 @@ const CreatePetitionPage = () => {
               // Permit2 struct: PermitTransferFrom
               {
                 permitted: {
-                  token: permitTransfer.permitted.token,
-                  amount: permitTransfer.permitted.amount,
+                  token: RVZ_TOKEN_ADDRESS as `0x${string}`,
+                  amount: BigInt(actualBurnAmount),
                 },
-                nonce: permitTransfer.nonce,
-                deadline: permitTransfer.deadline,
+                nonce: BigInt(nonce),
+                deadline: BigInt(deadline),
               },
-              'PERMIT2_SIGNATURE_PLACEHOLDER_0', // Will be replaced with actual signature
+              'PERMIT2_SIGNATURE_PLACEHOLDER_0', // Placeholder for MiniKit to inject the Permit2 signature
             ],
           },
         ],
         permit2: [
           {
-            ...permitTransfer,
-            spender: PETITION_REGISTRY_ADDRESS, // PetitionRegistry contract will spend the tokens
+            permitted: {
+              token: RVZ_TOKEN_ADDRESS as `0x${string}`,
+              amount: actualBurnAmount.toString(),
+            },
+            nonce: nonce.toString(),
+            deadline: deadline.toString(),
+            spender: PETITION_REGISTRY_ADDRESS as `0x${string}`, // PetitionRegistry contract will spend the tokens
           },
         ],
       });
+
+      console.log('MiniKit response:', finalPayload);
 
       if (finalPayload.status === 'success') {
         console.log('Transaction submitted successfully:', finalPayload.transaction_id);
         setTransactionId(finalPayload.transaction_id);
       } else {
         console.error('Transaction submission failed:', finalPayload);
+        console.error('Full error details:', JSON.stringify(finalPayload, null, 2));
+        if ((finalPayload as any).details) {
+          console.error('Simulation error:', (finalPayload as any).details.simulationError);
+          console.error('Block:', (finalPayload as any).details.block);
+          console.error('Simulation ID:', (finalPayload as any).details.simulationId);
+        }
         setSubmitStatus('error');
         setIsSubmitting(false);
         setTimeout(() => {
@@ -279,7 +425,7 @@ const CreatePetitionPage = () => {
           </div>
 
           {/* Wallet Connection Check */}
-          {!address && (
+          {!walletAddress && (
             <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -293,6 +439,52 @@ const CreatePetitionPage = () => {
                   </h3>
                   <div className="mt-1 text-sm text-yellow-700">
                     Please connect your wallet to create a petition.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Debug Information - Remove in production */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+            <h4 className="font-semibold text-gray-800 mb-2">Debug Info:</h4>
+            <div className="text-xs text-gray-700 space-y-1">
+              <p><strong>Wagmi Address:</strong> {address || 'Not connected'}</p>
+              <p><strong>Session Address:</strong> {session?.user?.walletAddress || 'Not available'}</p>
+              <p><strong>Combined Address:</strong> {walletAddress || 'Not available'}</p>
+              <p><strong>Can Create Petition:</strong> {walletAddress ? 'Yes' : 'No'}</p>
+              
+              <div className="mt-3 pt-2 border-t border-gray-300">
+                <p><strong>Contract Configuration:</strong></p>
+                <p className="ml-2">• Contract RVZ Token: {contractInfo.rvzTokenAddress || 'Loading...'}</p>
+                <p className="ml-2">• Our RVZ Token: {RVZ_TOKEN_ADDRESS}</p>
+                <p className="ml-2">• Tokens Match: {
+                  contractInfo.isInitialized 
+                    ? (contractInfo.rvzTokenAddress === RVZ_TOKEN_ADDRESS ? '✅ Yes' : '❌ No') 
+                    : 'Loading...'
+                }</p>
+                <p className="ml-2">• Contract Permit2: {contractInfo.permit2Address || 'Loading...'}</p>
+                <p className="ml-2">• Our Permit2: {PERMIT2_ADDRESS}</p>
+                <p className="ml-2">• Burn Amount: {contractInfo.burnAmount || 'Loading...'}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Token Mismatch Warning */}
+          {contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Token Configuration Mismatch
+                  </h3>
+                  <div className="mt-1 text-sm text-red-700">
+                    The RVZ token address in the smart contract ({contractInfo.rvzTokenAddress}) doesn't match our configured address ({RVZ_TOKEN_ADDRESS}). This will cause the "Invalid token" error. Please update the environment variable or reinitialize the contract.
                   </div>
                 </div>
               </div>
@@ -446,7 +638,7 @@ const CreatePetitionPage = () => {
             <div className="space-y-3">
               <button
                 type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !address}
+                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress}
                 className={getButtonClass()}
               >
                 {getButtonText()}
