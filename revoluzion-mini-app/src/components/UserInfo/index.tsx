@@ -10,18 +10,17 @@ import { useSession } from 'next-auth/react';
  * The component is client-side rendered.
  */
 export const UserInfo = () => {
-  // Fetching the user state client side
   const session = useSession();
 
   return (
-    <div className="flex flex-row items-center justify-start gap-4 rounded-xl w-full border-2 border-gray-200 p-4">
-      <Marble src={session?.data?.user?.profilePictureUrl} className="w-14" />
+    <div className="flex flex-row items-center justify-start gap-2">
+      <Marble src={session?.data?.user?.profilePictureUrl} className="w-10 h-10" />
       <div className="flex flex-row items-center justify-center">
-        <span className="text-lg font-semibold capitalize">
+        <span className="text-base font-semibold capitalize text-black">
           {session?.data?.user?.username}
         </span>
         {session?.data?.user?.profilePictureUrl && (
-          <CircularIcon size="sm" className="ml-0">
+          <CircularIcon size="sm" className="ml-1">
             <CheckCircleSolid className="text-blue-600" />
           </CircularIcon>
         )}
