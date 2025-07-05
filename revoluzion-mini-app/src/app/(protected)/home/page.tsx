@@ -1,50 +1,55 @@
+'use client';
+
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
-import { Marble, TopBar } from '@worldcoin/mini-apps-ui-kit-react';
+import { MiniKit } from '@worldcoin/minikit-js';
 import Link from 'next/link';
+import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+import { useState, useEffect } from 'react';
+import { createPublicClient, http } from 'viem';
+import { worldchain } from 'viem/chains';
 
-export default async function Home() {
-  const session = await auth();
+const PETITION_REGISTRY_ADDRESS = '0x...'; // Set your deployed contract address
 
-  const petitions = [
-    {
-      id: 1,
-      title: 'Protect the Amazon Rainforest',
-      description: 'Stop deforestation and preserve our planet\'s lungs for future generations.',
-      supporters: 1250,
-      goal: 5000,
-      category: 'Environment',
-      urgency: 'High',
-    },
-    {
-      id: 2,
-      title: 'Fund Universal Basic Income Study',
-      description: 'Support research on UBI to create a more equitable economic system.',
-      supporters: 850,
-      goal: 2000,
-      category: 'Economics',
-      urgency: 'Medium',
-    },
-    {
-      id: 3,
-      title: 'Clean Up Our Oceans',
-      description: 'Remove plastic waste and restore marine ecosystems worldwide.',
-      supporters: 3400,
-      goal: 10000,
-      category: 'Environment',
-      urgency: 'High',
-    },
-    {
-      id: 4,
-      title: 'Education for All Children',
-      description: 'Ensure every child has access to quality education regardless of location.',
-      supporters: 2100,
-      goal: 7500,
-      category: 'Education',
-      urgency: 'Medium',
-    },
-  ];
+export default function Home() {
+  const [petitions, setPetitions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const client = createPublicClient({
+    chain: worldchain,
+    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
+  });
+
+  useEffect(() => {
+    async function fetchPetitions() {
+      try {
+        const petitionCount = await client.readContract({
+          address: PETITION_REGISTRY_ADDRESS,
+          abi: PetitionRegistryABI,
+          functionName: 'petitionCount',
+        }) as bigint;
+
+        const petitionsData = [];
+        for (let i = 1; i <= petitionCount; i++) {
+          const petition = await client.readContract({
+            address: PETITION_REGISTRY_ADDRESS,
+            abi: PetitionRegistryABI,
+            functionName: 'getPetition',
+            args: [BigInt(i)],
+          });
+          petitionsData.push(petition);
+        }
+        setPetitions(petitionsData);
+      } catch (error) {
+        console.error('Error fetching petitions:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPetitions();
+  }, []);
 
   return (
     <>
@@ -138,64 +143,19 @@ export default async function Home() {
             </div>
             
             <div className="space-y-4">
-              {petitions.map((petition) => {
-                const progress = (petition.supporters / petition.goal) * 100;
-                const isUrgent = petition.urgency === 'High';
-                
-                return (
-                  <div key={petition.id} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                            isUrgent 
-                              ? 'bg-red-100 text-red-700' 
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {petition.category}
-                          </span>
-                          {isUrgent && (
-                            <span className="px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-700">
-                              Urgent
-                            </span>
-                          )}
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2 leading-tight">
-                          {petition.title}
-                        </h3>
-                        <p className="text-gray-600 text-sm leading-relaxed mb-3">
-                          {petition.description}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="mb-4">
-                      <div className="flex justify-between text-sm mb-2">
-                        <span className="font-semibold text-gray-900">
-                          {petition.supporters.toLocaleString()} supporters
-                        </span>
-                        <span className="text-gray-600">
-                          {petition.goal.toLocaleString()} goal
-                        </span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-red-600 h-2 rounded-full transition-all duration-300"
-                          style={{ width: `${Math.min(progress, 100)}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        {Math.round(progress)}% complete
-                      </div>
-                    </div>
-                    
-                    <button className="w-full bg-red-600 text-white font-semibold py-3 px-6 rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-sm">
-                      Support This Petition
-                    </button>
-                  </div>
-                );
-              })}
+              {loading ? (
+                <p>Loading petitions...</p>
+              ) : (
+                <ul>
+                  {petitions.map((petition) => (
+                    <li key={petition.id.toString()}>
+                      <Link href={`/petition/${petition.id.toString()}`}>
+                        {petition.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>

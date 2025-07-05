@@ -1,16 +1,227 @@
+'use client';
+
 import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
+import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+import { useState, useEffect } from 'react';
+import { MiniKit } from '@worldcoin/minikit-js';
+import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
+import { createPublicClient, http } from 'viem';
+import { worldchain } from 'viem/chains';
 
-export default async function CreatePetition() {
-  const session = await auth();
+// You'll need to set these to your deployed contract addresses
+const PETITION_REGISTRY_ADDRESS = '0x0000000000000000000000000000000000000000';
+const RVZ_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
+const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'; // Canonical Permit2 address
+
+// Standard burn amount - you should fetch this from the contract
+const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
+
+export default function CreatePetition() {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    goal: 100
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [transactionId, setTransactionId] = useState<string>('');
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [submitStatus, setSubmitStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+
+  // Feel free to use your own RPC provider for better performance
+  const client = createPublicClient({
+    chain: worldchain,
+    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
+  });
+
+  const {
+    isLoading: isConfirming,
+    isSuccess: isConfirmed,
+    isError: isTransactionError,
+    error: transactionError,
+  } = useWaitForTransactionReceipt({
+    client: client,
+    appConfig: {
+      app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
+    },
+    transactionId: transactionId,
+  });
+
+  useEffect(() => {
+    if (transactionId && !isConfirming) {
+      if (isConfirmed) {
+        console.log('Petition created successfully!');
+        setSubmitStatus('success');
+        setIsSubmitting(false);
+        // Reset form
+        setFormData({
+          title: '',
+          description: '',
+          goal: 100
+        });
+        setTimeout(() => {
+          setSubmitStatus('idle');
+        }, 5000);
+      } else if (isTransactionError) {
+        console.error('Transaction failed:', transactionError);
+        setSubmitStatus('error');
+        setIsSubmitting(false);
+        setTimeout(() => {
+          setSubmitStatus('idle');
+        }, 5000);
+      }
+    }
+  }, [isConfirmed, isConfirming, isTransactionError, transactionError, transactionId]);
+
+  const validateForm = () => {
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!formData.title.trim()) {
+      newErrors.title = 'Title is required';
+    } else if (formData.title.length < 10) {
+      newErrors.title = 'Title must be at least 10 characters long';
+    }
+    
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required';
+    } else if (formData.description.length < 50) {
+      newErrors.description = 'Description must be at least 50 characters long';
+    }
+    
+    if (formData.goal < 1) {
+      newErrors.goal = 'Goal must be at least 1 supporter';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitStatus('pending');
+    setTransactionId('');
+
+    try {
+      // Create permit2 for RVZ token transfer
+      // Permit2 is valid for max 1 hour as per World Chain docs
+      const permitTransfer = {
+        permitted: {
+          token: RVZ_TOKEN_ADDRESS,
+          amount: BURN_AMOUNT,
+        },
+        nonce: Date.now().toString(),
+        deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(), // 30 minutes
+      };
+
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
+        transaction: [
+          {
+            address: PETITION_REGISTRY_ADDRESS,
+            abi: PetitionRegistryABI,
+            functionName: 'createPetitionWithPermit2',
+            args: [
+              formData.title,
+              formData.description,
+              BigInt(formData.goal),
+              // Permit2 struct
+              [
+                [permitTransfer.permitted.token, permitTransfer.permitted.amount],
+                permitTransfer.nonce,
+                permitTransfer.deadline,
+              ],
+              'PERMIT2_SIGNATURE_PLACEHOLDER_0', // Will be replaced with actual signature
+            ],
+          },
+        ],
+        permit2: [
+          {
+            ...permitTransfer,
+            spender: PETITION_REGISTRY_ADDRESS, // PetitionRegistry contract will spend the tokens
+          },
+        ],
+        formatPayload: true, // Default is true, but being explicit as per docs
+      });
+
+      if (finalPayload.status === 'success') {
+        console.log('Transaction submitted, waiting for confirmation:', finalPayload.transaction_id);
+        setTransactionId(finalPayload.transaction_id);
+      } else {
+        console.error('Transaction submission failed:', finalPayload);
+        setSubmitStatus('error');
+        setIsSubmitting(false);
+        setTimeout(() => {
+          setSubmitStatus('idle');
+        }, 5000);
+      }
+    } catch (err) {
+      console.error('Error creating petition:', err);
+      setSubmitStatus('error');
+      setIsSubmitting(false);
+      setTimeout(() => {
+        setSubmitStatus('idle');
+      }, 5000);
+    }
+  };
+
+  const handleInputChange = (field: string, value: string | number) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+    
+    // Clear error when user starts typing
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+  };
+
+  const getButtonText = () => {
+    switch (submitStatus) {
+      case 'pending':
+        return 'Creating Petition...';
+      case 'success':
+        return 'Petition Created!';
+      case 'error':
+        return 'Failed - Try Again';
+      default:
+        return 'Launch Your Petition';
+    }
+  };
+
+  const getButtonClass = () => {
+    switch (submitStatus) {
+      case 'pending':
+        return 'w-full bg-gray-400 text-white font-semibold py-4 px-6 rounded-xl cursor-not-allowed';
+      case 'success':
+        return 'w-full bg-green-600 text-white font-semibold py-4 px-6 rounded-xl';
+      case 'error':
+        return 'w-full bg-red-700 text-white font-semibold py-4 px-6 rounded-xl hover:bg-red-800 transition-colors duration-200';
+      default:
+        return 'w-full bg-red-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-sm';
+    }
+  };
 
   return (
     <>
       <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <button className="text-red-600 font-semibold">← Back</button>
+            <button 
+              className="text-red-600 font-semibold"
+              onClick={() => window.history.back()}
+            >
+              ← Back
+            </button>
           </div>
           <h1 className="text-lg font-bold text-black">Create Petition</h1>
           <div className="flex items-center gap-2">
@@ -45,8 +256,49 @@ export default async function CreatePetition() {
             </div>
           </div>
 
+          {/* Status Messages */}
+          {submitStatus === 'success' && (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-green-800">
+                    Success!
+                  </h3>
+                  <div className="mt-1 text-sm text-green-700">
+                    Your petition has been created successfully! RVZ tokens have been burned and your petition is now live on the blockchain.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {submitStatus === 'error' && (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-red-800">
+                    Transaction Failed
+                  </h3>
+                  <div className="mt-1 text-sm text-red-700">
+                    Failed to create petition. Please ensure you have sufficient RVZ tokens and that Permit2 is properly configured. Check the console for debug information.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Form Section */}
-          <form className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
             {/* Petition Title */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <label className="block text-sm font-semibold text-gray-900 mb-2">
@@ -54,30 +306,18 @@ export default async function CreatePetition() {
               </label>
               <input
                 type="text"
+                value={formData.title}
+                onChange={(e) => handleInputChange('title', e.target.value)}
                 placeholder="What change do you want to see?"
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${
+                  errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                }`}
                 maxLength={100}
               />
+              {errors.title && (
+                <p className="text-xs text-red-600 mt-1">{errors.title}</p>
+              )}
               <p className="text-xs text-gray-500 mt-1">Make it clear and compelling</p>
-            </div>
-
-            {/* Category Selection */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Category *
-              </label>
-              <select className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none">
-                <option value="">Select a category</option>
-                <option value="environment">Environment</option>
-                <option value="human-rights">Human Rights</option>
-                <option value="education">Education</option>
-                <option value="healthcare">Healthcare</option>
-                <option value="economics">Economics</option>
-                <option value="politics">Politics</option>
-                <option value="technology">Technology</option>
-                <option value="social-justice">Social Justice</option>
-                <option value="other">Other</option>
-              </select>
             </div>
 
             {/* Description */}
@@ -86,77 +326,87 @@ export default async function CreatePetition() {
                 Tell Your Story *
               </label>
               <textarea
+                value={formData.description}
+                onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder="Explain why this petition matters. What's the problem? What solution are you proposing? Why should people care?"
-                className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none"
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none ${
+                  errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                }`}
                 maxLength={1000}
               />
+              {errors.description && (
+                <p className="text-xs text-red-600 mt-1">{errors.description}</p>
+              )}
               <p className="text-xs text-gray-500 mt-1">Be specific and passionate</p>
             </div>
 
-            {/* Target Audience */}
+            {/* Support Goal */}
             <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Who can make this change happen? *
+                Support Goal *
               </label>
-              <input
-                type="text"
-                placeholder="e.g., Mayor of New York, Congress, Company CEO"
+              <select 
+                value={formData.goal}
+                onChange={(e) => handleInputChange('goal', parseInt(e.target.value))}
                 className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
-              />
-              <p className="text-xs text-gray-500 mt-1">Who has the power to address this issue?</p>
-            </div>
-
-            {/* Goal */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Signature Goal
-              </label>
-              <select className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none">
-                <option value="100">100 signatures</option>
-                <option value="500">500 signatures</option>
-                <option value="1000">1,000 signatures</option>
-                <option value="5000">5,000 signatures</option>
-                <option value="10000">10,000 signatures</option>
-                <option value="50000">50,000 signatures</option>
-                <option value="100000">100,000 signatures</option>
+              >
+                <option value={100}>100 supporters</option>
+                <option value={500}>500 supporters</option>
+                <option value={1000}>1,000 supporters</option>
+                <option value={5000}>5,000 supporters</option>
+                <option value={10000}>10,000 supporters</option>
+                <option value={50000}>50,000 supporters</option>
+                <option value={100000}>100,000 supporters</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">You can always increase this later</p>
+              <p className="text-xs text-gray-500 mt-1">Set your target number of supporters</p>
             </div>
 
-            {/* Urgency Level */}
-            <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
-                Urgency Level
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input type="radio" name="urgency" value="low" className="mr-2" />
-                  <span className="text-sm">Low</span>
-                </label>
-                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input type="radio" name="urgency" value="medium" className="mr-2" />
-                  <span className="text-sm">Medium</span>
-                </label>
-                <label className="flex items-center p-3 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                  <input type="radio" name="urgency" value="high" className="mr-2" />
-                  <span className="text-sm">High</span>
-                </label>
+            {/* Token Burn Notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-amber-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-amber-800">
+                    RVZ Token Burn Required
+                  </h3>
+                  <div className="mt-1 text-sm text-amber-700">
+                    Creating a petition requires burning 1 RVZ token via Permit2 signature. This prevents spam and ensures commitment to your cause. The transaction is processed securely through World Chain's signature system.
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Submit Buttons */}
+            {/* Permit2 Technical Info */}
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-blue-800">
+                    Permit2 Integration
+                  </h3>
+                  <div className="mt-1 text-sm text-blue-700">
+                    This petition system uses Permit2 for secure, gasless token transfers. No pre-approval required - just sign the transaction and your tokens will be automatically burned upon petition creation.
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <div className="space-y-3">
               <button
                 type="submit"
-                className="w-full bg-red-600 text-white font-semibold py-4 px-6 rounded-xl hover:bg-red-700 transition-colors duration-200 shadow-sm"
+                disabled={isSubmitting || submitStatus === 'pending'}
+                className={getButtonClass()}
               >
-                Launch Your Petition
-              </button>
-              <button
-                type="button"
-                className="w-full bg-gray-200 text-gray-700 font-semibold py-3 px-6 rounded-xl hover:bg-gray-300 transition-colors duration-200"
-              >
-                Save as Draft
+                {getButtonText()}
               </button>
             </div>
           </form>

@@ -39,6 +39,10 @@ contract RVZToken is
         _mint(to, amount);
     }
 
+    function burn(uint256 amount) external {
+        _burn(msg.sender, amount);
+    }
+
     function _authorizeUpgrade(address newImplementation)
         internal
         override
