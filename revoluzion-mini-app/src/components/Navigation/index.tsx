@@ -8,8 +8,7 @@ import { useEffect, useState } from 'react';
 import { createPublicClient, http, formatUnits } from 'viem';
 import { worldchain } from 'viem/chains';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
-
-const PETITION_REGISTRY_ADDRESS = '0x...'; // TODO: Add your deployed PetitionRegistry contract address here
+import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 
 /**
  * This component uses the UI Kit to navigate between pages
@@ -32,7 +31,7 @@ export const Navigation = () => {
 
   useEffect(() => {
     const fetchPetitionCount = async () => {
-      if (PETITION_REGISTRY_ADDRESS === '0x...') {
+      if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
         console.warn('PetitionRegistry contract address not set.');
         setPetitionCount(0); // Set a default or placeholder
         return;

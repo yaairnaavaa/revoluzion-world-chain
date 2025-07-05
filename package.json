@@ -1,7 +1,10 @@
 {
   "dependencies": {
+    "@tanstack/react-query": "^5.81.5",
     "@worldcoin/idkit": "^2.2.2",
     "iconoir-react": "^7.11.0",
-    "next-auth": "^4.24.11"
+    "next-auth": "^4.24.11",
+    "viem": "^2.31.7",
+    "wagmi": "^2.15.6"
   }
 }

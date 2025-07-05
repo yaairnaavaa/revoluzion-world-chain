@@ -1,6 +1,5 @@
 'use client';
 
-import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
@@ -9,16 +8,18 @@ import { MiniKit } from '@worldcoin/minikit-js';
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
-
-// You'll need to set these to your deployed contract addresses
-const PETITION_REGISTRY_ADDRESS = '0x0000000000000000000000000000000000000000';
-const RVZ_TOKEN_ADDRESS = '0x0000000000000000000000000000000000000000';
-const PERMIT2_ADDRESS = '0x000000000022D473030F116dDEE9F6B43aC78BA3'; // Canonical Permit2 address
+import {
+  PETITION_REGISTRY_ADDRESS,
+  PERMIT2_ADDRESS,
+  RVZ_TOKEN_ADDRESS,
+} from '@/lib/contracts';
+import { useAccount } from 'wagmi';
 
 // Standard burn amount - you should fetch this from the contract
 const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
 
-export default function CreatePetition() {
+const CreatePetitionPage = () => {
+  const { address } = useAccount();
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -104,6 +105,12 @@ export default function CreatePetition() {
       return;
     }
 
+    if (!address) {
+      console.error('No wallet connected');
+      setSubmitStatus('error');
+      return;
+    }
+
     setIsSubmitting(true);
     setSubmitStatus('pending');
     setTransactionId('');
@@ -111,14 +118,27 @@ export default function CreatePetition() {
     try {
       // Create permit2 for RVZ token transfer
       // Permit2 is valid for max 1 hour as per World Chain docs
+      const deadline = Math.floor(Date.now() / 1000) + 30 * 60; // 30 minutes from now
+      const nonce = Date.now(); // Use timestamp as nonce for simplicity
+
       const permitTransfer = {
         permitted: {
           token: RVZ_TOKEN_ADDRESS,
           amount: BURN_AMOUNT,
         },
-        nonce: Date.now().toString(),
-        deadline: Math.floor((Date.now() + 30 * 60 * 1000) / 1000).toString(), // 30 minutes
+        nonce: nonce.toString(),
+        deadline: deadline.toString(),
       };
+
+      console.log('Creating petition with Permit2:', {
+        title: formData.title,
+        description: formData.description,
+        goal: formData.goal,
+        permitTransfer,
+        petitionRegistry: PETITION_REGISTRY_ADDRESS,
+        rvzToken: RVZ_TOKEN_ADDRESS,
+        permit2: PERMIT2_ADDRESS
+      });
 
       const { finalPayload } = await MiniKit.commandsAsync.sendTransaction({
         transaction: [
@@ -130,12 +150,15 @@ export default function CreatePetition() {
               formData.title,
               formData.description,
               BigInt(formData.goal),
-              // Permit2 struct
-              [
-                [permitTransfer.permitted.token, permitTransfer.permitted.amount],
-                permitTransfer.nonce,
-                permitTransfer.deadline,
-              ],
+              // Permit2 struct: PermitTransferFrom
+              {
+                permitted: {
+                  token: permitTransfer.permitted.token,
+                  amount: permitTransfer.permitted.amount,
+                },
+                nonce: permitTransfer.nonce,
+                deadline: permitTransfer.deadline,
+              },
               'PERMIT2_SIGNATURE_PLACEHOLDER_0', // Will be replaced with actual signature
             ],
           },
@@ -146,11 +169,10 @@ export default function CreatePetition() {
             spender: PETITION_REGISTRY_ADDRESS, // PetitionRegistry contract will spend the tokens
           },
         ],
-        formatPayload: true, // Default is true, but being explicit as per docs
       });
 
       if (finalPayload.status === 'success') {
-        console.log('Transaction submitted, waiting for confirmation:', finalPayload.transaction_id);
+        console.log('Transaction submitted successfully:', finalPayload.transaction_id);
         setTransactionId(finalPayload.transaction_id);
       } else {
         console.error('Transaction submission failed:', finalPayload);
@@ -256,6 +278,27 @@ export default function CreatePetition() {
             </div>
           </div>
 
+          {/* Wallet Connection Check */}
+          {!address && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-6">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <h3 className="text-sm font-medium text-yellow-800">
+                    Wallet Not Connected
+                  </h3>
+                  <div className="mt-1 text-sm text-yellow-700">
+                    Please connect your wallet to create a petition.
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Status Messages */}
           {submitStatus === 'success' && (
             <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
@@ -290,7 +333,7 @@ export default function CreatePetition() {
                     Transaction Failed
                   </h3>
                   <div className="mt-1 text-sm text-red-700">
-                    Failed to create petition. Please ensure you have sufficient RVZ tokens and that Permit2 is properly configured. Check the console for debug information.
+                    Failed to create petition. Please ensure you have sufficient RVZ tokens and try again. Check the console for debug information.
                   </div>
                 </div>
               </div>
@@ -403,7 +446,7 @@ export default function CreatePetition() {
             <div className="space-y-3">
               <button
                 type="submit"
-                disabled={isSubmitting || submitStatus === 'pending'}
+                disabled={isSubmitting || submitStatus === 'pending' || !address}
                 className={getButtonClass()}
               >
                 {getButtonText()}
@@ -414,4 +457,6 @@ export default function CreatePetition() {
       </Page.Main>
     </>
   );
-} 
+}
+
+export default CreatePetitionPage; 

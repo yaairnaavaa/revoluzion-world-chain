@@ -1,56 +1,25 @@
 'use client';
 
-import { auth } from '@/auth';
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
-import { MiniKit } from '@worldcoin/minikit-js';
 import Link from 'next/link';
-import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
-import { useState, useEffect } from 'react';
-import { createPublicClient, http } from 'viem';
-import { worldchain } from 'viem/chains';
 
-const PETITION_REGISTRY_ADDRESS = '0x...'; // Set your deployed contract address
+const mockPetitions = [
+  {
+    id: '1',
+    title: 'Improve Public Transportation',
+    description: 'A petition to expand and improve the public transportation network.',
+    signatures: 1234,
+  },
+  {
+    id: '2',
+    title: 'Plant More Trees in Urban Areas',
+    description: 'A call to action to increase green spaces in our city.',
+    signatures: 5678,
+  },
+];
 
 export default function Home() {
-  const [petitions, setPetitions] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const client = createPublicClient({
-    chain: worldchain,
-    transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
-  });
-
-  useEffect(() => {
-    async function fetchPetitions() {
-      try {
-        const petitionCount = await client.readContract({
-          address: PETITION_REGISTRY_ADDRESS,
-          abi: PetitionRegistryABI,
-          functionName: 'petitionCount',
-        }) as bigint;
-
-        const petitionsData = [];
-        for (let i = 1; i <= petitionCount; i++) {
-          const petition = await client.readContract({
-            address: PETITION_REGISTRY_ADDRESS,
-            abi: PetitionRegistryABI,
-            functionName: 'getPetition',
-            args: [BigInt(i)],
-          });
-          petitionsData.push(petition);
-        }
-        setPetitions(petitionsData);
-      } catch (error) {
-        console.error('Error fetching petitions:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchPetitions();
-  }, []);
-
   return (
     <>
       <Page.Header className="p-0 bg-white border-b border-gray-200">
@@ -143,19 +112,19 @@ export default function Home() {
             </div>
             
             <div className="space-y-4">
-              {loading ? (
-                <p>Loading petitions...</p>
-              ) : (
                 <ul>
-                  {petitions.map((petition) => (
-                    <li key={petition.id.toString()}>
-                      <Link href={`/petition/${petition.id.toString()}`}>
-                        {petition.title}
+                {mockPetitions.map((petition) => (
+                  <li key={petition.id}>
+                    <Link href={`/petition/${petition.id}`}>
+                      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-gray-200 transition-all">
+                        <h3 className="font-bold text-gray-900">{petition.title}</h3>
+                        <p className="text-sm text-gray-600">{petition.description}</p>
+                        <p className="text-sm text-gray-500 mt-2">{petition.signatures} signatures</p>
+                      </div>
                       </Link>
                     </li>
                   ))}
                 </ul>
-              )}
             </div>
           </div>
         </div>
