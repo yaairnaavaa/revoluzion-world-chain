@@ -296,10 +296,7 @@ const CreatePetitionPage = () => {
         console.error('Transaction submission failed:', finalPayload);
         console.error('Full error details:', JSON.stringify(finalPayload, null, 2));
         if ('details' in finalPayload && finalPayload.details) {
-          const details = finalPayload.details as any;
-          console.error('Simulation error:', details.simulationError);
-          console.error('Block:', details.block);
-          console.error('Simulation ID:', details.simulationId);
+          console.error('Simulation Details:', finalPayload.details);
         }
         setSubmitStatus('error');
         setIsSubmitting(false);

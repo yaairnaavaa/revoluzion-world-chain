@@ -22,8 +22,8 @@ export default function Wallet() {
     wldTokenAddress?: string;
     rvzError?: string;
     wldError?: string;
-    rvzBalanceData?: any;
-    wldBalanceData?: any;
+    rvzBalanceData?: unknown;
+    wldBalanceData?: unknown;
   }>({});
 
   // Use wagmi for balance fetching

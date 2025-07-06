@@ -9,6 +9,14 @@ import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 
+type Petition = {
+  id: string | number;
+  title: string;
+  description: string;
+  supportCount?: bigint;
+  signatures?: string;
+};
+
 const mockPetitions = [
   {
     id: 'mock-1',
@@ -25,13 +33,7 @@ const mockPetitions = [
 ];
 
 export default function Petitions() {
-  const [petitions, setPetitions] = useState<{
-    id: string | number;
-    title: string;
-    description: string;
-    supportCount?: bigint;
-    signatures?: string;
-  }[]>([]);
+  const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,7 +76,7 @@ export default function Petitions() {
           }
         }
 
-        setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as any : mockPetitions);
+        setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
       } catch (error) {
         console.error('Error fetching petitions:', error);
         setPetitions(mockPetitions);
