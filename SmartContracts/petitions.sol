@@ -228,8 +228,11 @@ contract PetitionRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable 
     ) external {
         require(_petitionId > 0 && _petitionId <= petitionCount, "Petition does not exist");
 
-        uint256 signalHash = uint256(keccak256(abi.encodePacked(msg.sender))) >> 8;
-        uint256 externalNullifierHash = uint256(keccak256(abi.encodePacked(_petitionId))) >> 8;
+        // Recreate the signal hash from the petition ID string to match the frontend
+        uint256 signalHash = uint256(keccak256(abi.encodePacked(uintToString(_petitionId))));
+
+        // Recreate the external nullifier hash from the action string
+        uint256 externalNullifierHash = uint256(keccak256(abi.encodePacked("support-petition")));
 
         worldIdRouter.verifyProof(
             root,
@@ -253,6 +256,25 @@ contract PetitionRegistry is Initializable, OwnableUpgradeable, UUPSUpgradeable 
             IRVZToken(rvzTokenAddress).mint(msg.sender, rewardAmount);
             emit RewardClaimed(msg.sender, rewardAmount, block.timestamp);
         }
+    }
+
+    function uintToString(uint256 value) internal pure returns (string memory) {
+        if (value == 0) {
+            return "0";
+        }
+        uint256 temp = value;
+        uint256 digits;
+        while (temp != 0) {
+            digits++;
+            temp /= 10;
+        }
+        bytes memory buffer = new bytes(digits);
+        while (value != 0) {
+            digits -= 1;
+            buffer[digits] = bytes1(uint8(48 + uint256(value % 10)));
+            value /= 10;
+        }
+        return string(buffer);
     }
 
     function _authorizeUpgrade(

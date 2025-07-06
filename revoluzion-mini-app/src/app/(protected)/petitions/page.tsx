@@ -104,14 +104,12 @@ export default function Petitions() {
                   <span className="text-sm text-gray-500">
                     {petition.supportCount || petition.signatures} supporters
                   </span>
-                  {petition.id && petition.id !== 'mock-1' && petition.id !== 'mock-2' && (
-                    <Link 
-                      href={`/petition/${petition.id.toString()}`}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      View Details
-                    </Link>
-                  )}
+                  <Link 
+                    href={`/petition/${petition.id.toString()}`}
+                    className="text-blue-600 hover:text-blue-800 font-medium"
+                  >
+                    View Details
+                  </Link>
                 </div>
               </div>
             ))}

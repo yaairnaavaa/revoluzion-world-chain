@@ -13,7 +13,7 @@ import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 
 export default function PetitionPage() {
   const params = useParams();
-  const petitionId = params.id ? BigInt(params.id as string) : 0n;
+  const petitionId = params.id ? BigInt(params.id as string) : 0;
   
   const [petition, setPetition] = useState<any>(null);
   const [isSupporting, setIsSupporting] = useState(false);
@@ -37,6 +37,8 @@ export default function PetitionPage() {
     },
     transactionId: transactionId,
   });
+
+  console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
 
   useEffect(() => {
     async function fetchPetition() {
@@ -81,35 +83,62 @@ export default function PetitionPage() {
   const handleSupport = async () => {
     if (!petition || isSupporting) return;
 
+    console.log('1. Starting handleSupport...');
     setIsSupporting(true);
     setSupportStatus('pending');
     setTransactionId('');
 
     try {
-      // This would require World ID verification
-      // For now, this is a placeholder implementation
-      console.log('Supporting petition:', petitionId);
-      
-      // In a real implementation, you would:
-      // 1. Generate World ID proof
-      // 2. Call supportPetition function with the proof
-      
-      // Mock success for now
-      setTimeout(() => {
-        setSupportStatus('success');
-        setIsSupporting(false);
-        setTimeout(() => {
-          setSupportStatus('idle');
-        }, 3000);
-      }, 2000);
+      console.log('2. Preparing to send transaction with MiniKit...');
+      const txPayload = {
+        transaction: [
+          {
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'supportPetition',
+            args: [
+              petitionId,
+              '0x0000000000000000000000000000000000000000000000000000000000000000', // root
+              '0x0000000000000000000000000000000000000000000000000000000000000000', // nullifierHash
+              [0, 0, 0, 0, 0, 0, 0, 0], // proof
+            ],
+          },
+        ],
+        proof: {
+            worldId: {
+                group_id: '1',
+                action: 'support-petition',
+                signal: petitionId.toString(),
+                credential_type: ['orb'],
+            },
+        }
+      };
 
+      console.log(
+        '3. Transaction Payload:',
+        JSON.stringify(
+          txPayload,
+          (key, value) => (typeof value === 'bigint' ? value.toString() : value),
+          2
+        )
+      );
+
+      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction(txPayload as any);
+      
+      console.log('4. MiniKit response:', finalPayload);
+
+      if (finalPayload.status === 'success') {
+        console.log('5. Transaction submitted successfully:', finalPayload.transaction_id);
+        setTransactionId(finalPayload.transaction_id);
+      } else {
+        console.error('5. Transaction submission failed:', finalPayload);
+        setSupportStatus('error');
+        setIsSupporting(false);
+      }
     } catch (err) {
-      console.error('Error supporting petition:', err);
+      console.error('6. An error occurred in handleSupport:', err);
       setSupportStatus('error');
       setIsSupporting(false);
-      setTimeout(() => {
-        setSupportStatus('idle');
-      }, 5000);
     }
   };
 
@@ -140,10 +169,10 @@ export default function PetitionPage() {
   return (
     <Page>
       <UserInfo />
-      <div className="flex flex-col items-center justify-center space-y-8 max-w-2xl mx-auto">
+      <div className="flex flex-col items-center justify-center space-y-8 max-w-2xl mx-auto p-4">
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 w-full">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">{petition.title}</h1>
-          <p className="text-gray-600 mb-6">{petition.description}</p>
+          <p className="text-gray-600 mb-6 whitespace-pre-wrap">{petition.description}</p>
           
           <div className="flex justify-between items-center mb-6">
             <div>
@@ -169,21 +198,15 @@ export default function PetitionPage() {
             ></div>
           </div>
 
-          <button
-            onClick={handleSupport}
-            disabled={isSupporting || supportStatus === 'success'}
-            className={`w-full py-3 px-6 rounded-lg font-medium transition-colors ${
-              supportStatus === 'success'
-                ? 'bg-green-600 text-white'
-                : supportStatus === 'error'
-                ? 'bg-red-600 text-white'
-                : isSupporting
-                ? 'bg-gray-400 text-white cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
-            }`}
-          >
-            {getButtonText()}
-          </button>
+          <div className="mt-6">
+            <button
+              onClick={handleSupport}
+              disabled={isSupporting || supportStatus === 'success'}
+              className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+            >
+              {getButtonText()}
+            </button>
+          </div>
 
           {supportStatus === 'error' && (
             <p className="text-red-600 text-sm mt-2 text-center">
