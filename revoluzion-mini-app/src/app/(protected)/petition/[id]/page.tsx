@@ -4,41 +4,62 @@ import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
 import { useState, useEffect } from 'react';
-import { MiniKit } from '@worldcoin/minikit-js';
-import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
+import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
+import { useAccount } from 'wagmi';
 
 export default function PetitionPage() {
   const params = useParams();
-  const petitionId = params.id ? BigInt(params.id as string) : 0;
+  const petitionId = params.id ? parseInt(params.id as string) : 0;
+  const { address } = useAccount();
   
-  const [petition, setPetition] = useState<any>(null);
+  const [petition, setPetition] = useState<{
+    title: string;
+    description: string;
+    supportCount: bigint;
+    goal: bigint;
+    createdAt: bigint;
+  } | null>(null);
   const [isSupporting, setIsSupporting] = useState(false);
-  const [transactionId, setTransactionId] = useState<string>('');
   const [supportStatus, setSupportStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [errorMessage, setErrorMessage] = useState<string>('');
 
   const client = createPublicClient({
     chain: worldchain,
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
   });
 
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    isError: isTransactionError,
-    error: transactionError,
-  } = useWaitForTransactionReceipt({
-    client: client,
-    appConfig: {
-      app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
-    },
-    transactionId: transactionId,
-  });
-
   console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
+  console.log('🔵 Render state - petition:', !!petition, 'isSupporting:', isSupporting, 'supportStatus:', supportStatus, 'address:', !!address);
+
+  // Test World ID Router
+  const testWorldIdRouter = async () => {
+    try {
+      console.log('🔵 Testing World ID Router...');
+      
+      // World ID Router address on mainnet
+      const WORLD_ID_ROUTER = '0x57b930D551e677CC36e2fA036Ae2fe8FdaE0330D';
+      
+      // Just check if the contract exists by getting its bytecode
+      const bytecode = await client.getBytecode({
+        address: WORLD_ID_ROUTER as `0x${string}`
+      });
+      
+      if (bytecode && bytecode !== '0x') {
+        console.log('🟢 World ID Router contract exists and has bytecode');
+        return true;
+      } else {
+        console.log('🔴 World ID Router contract not found or has no bytecode');
+        return false;
+      }
+    } catch (error) {
+      console.error('🔴 World ID Router test failed:', error);
+      return false;
+    }
+  };
 
   useEffect(() => {
     async function fetchPetition() {
@@ -50,46 +71,78 @@ export default function PetitionPage() {
             functionName: 'getPetition',
             args: [petitionId],
           });
-          setPetition(data);
+          setPetition(data as {
+            title: string;
+            description: string;
+            supportCount: bigint;
+            goal: bigint;
+            createdAt: bigint;
+          });
         } catch (error) {
           console.error('Error fetching petition:', error);
         }
       }
     }
     fetchPetition();
-  }, [petitionId]);
-
-  useEffect(() => {
-    if (transactionId && !isConfirming) {
-      if (isConfirmed) {
-        console.log('Support transaction confirmed!');
-        setSupportStatus('success');
-        setIsSupporting(false);
-        // Refresh petition data
-        setTimeout(() => {
-          setSupportStatus('idle');
-        }, 5000);
-      } else if (isTransactionError) {
-        console.error('Support transaction failed:', transactionError);
-        setSupportStatus('error');
-        setIsSupporting(false);
-        setTimeout(() => {
-          setSupportStatus('idle');
-        }, 5000);
-      }
-    }
-  }, [isConfirmed, isConfirming, isTransactionError, transactionError, transactionId]);
+  }, [petitionId, client]);
 
   const handleSupport = async () => {
-    if (!petition || isSupporting) return;
-
-    console.log('1. Starting handleSupport...');
-    setIsSupporting(true);
-    setSupportStatus('pending');
-    setTransactionId('');
+    console.log('🔵 Button clicked! Starting handleSupport...');
+    console.log('🔵 Address:', address);
+    console.log('🔵 Petition:', petition);
+    console.log('🔵 isSupporting:', isSupporting);
+    
+    // In World App Mini Apps, we don't need a traditional wallet connection
+    // The World App handles the wallet connection internally
+    
+    if (!petition || isSupporting) {
+      console.log('🔴 No petition or already supporting, returning');
+      return;
+    }
 
     try {
-      console.log('2. Preparing to send transaction with MiniKit...');
+      console.log('🟢 Setting isSupporting to true');
+      setIsSupporting(true);
+      console.log('1. Starting support process...');
+
+      // Step 1: Verify with World ID
+      console.log('2. Verifying with World ID...');
+      
+      if (!MiniKit.isInstalled()) {
+        console.warn("Tried to invoke 'verify', but MiniKit is not installed.");
+        alert("MiniKit is not installed. Please make sure you're running this in the World App.");
+        return;
+      }
+
+      console.log('🟢 MiniKit is installed, proceeding with verification');
+
+      const verifyPayload = {
+        action: 'support-petition',
+        signal: petitionId.toString(),
+        verification_level: VerificationLevel.Orb,
+      };
+
+      console.log('🟢 Verify payload:', verifyPayload);
+
+      const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
+
+      console.log('🟢 Verification response:', finalPayload);
+
+      if (finalPayload.status === 'error') {
+        console.log('World ID verification failed:', finalPayload);
+        setSupportStatus('error');
+        setErrorMessage(JSON.stringify(finalPayload));
+        alert('World ID verification failed. Please try again.');
+        return;
+      }
+
+      console.log('3. World ID verification successful:', finalPayload);
+
+      // Step 2: Send transaction with verified proof
+      console.log('4. Preparing transaction...');
+      
+      const successPayload = finalPayload as ISuccessResult;
+      
       const txPayload = {
         transaction: [
           {
@@ -98,60 +151,41 @@ export default function PetitionPage() {
             functionName: 'supportPetition',
             args: [
               petitionId,
-              '0x0000000000000000000000000000000000000000000000000000000000000000', // root
-              '0x0000000000000000000000000000000000000000000000000000000000000000', // nullifierHash
-              [0, 0, 0, 0, 0, 0, 0, 0], // proof
+              successPayload.merkle_root,
+              successPayload.nullifier_hash,
+              successPayload.proof,
             ],
           },
         ],
-        proof: {
-            worldId: {
-                group_id: '1',
-                action: 'support-petition',
-                signal: petitionId.toString(),
-                credential_type: ['orb'],
-            },
-        }
       };
 
-      console.log(
-        '3. Transaction Payload:',
-        JSON.stringify(
-          txPayload,
-          (key, value) => (typeof value === 'bigint' ? value.toString() : value),
-          2
-        )
-      );
-
-      const { finalPayload } = await MiniKit.commandsAsync.sendTransaction(txPayload as any);
+      console.log('5. Sending transaction...');
+      const { finalPayload: txFinalPayload } = await MiniKit.commandsAsync.sendTransaction(txPayload);
       
-      console.log('4. MiniKit response:', finalPayload);
+      console.log('6. Transaction response:', txFinalPayload);
 
-      if (finalPayload.status === 'success') {
-        console.log('5. Transaction submitted successfully:', finalPayload.transaction_id);
-        setTransactionId(finalPayload.transaction_id);
+      if (txFinalPayload.status === 'success') {
+        console.log('Transaction successful!');
+        setSupportStatus('success');
+        alert('Successfully supported the petition!');
+        // Refresh the page to show updated data
+        setTimeout(() => {
+          setSupportStatus('idle');
+        }, 5000);
       } else {
-        console.error('5. Transaction submission failed:', finalPayload);
+        console.error('Transaction failed:', txFinalPayload);
         setSupportStatus('error');
-        setIsSupporting(false);
+        setErrorMessage(JSON.stringify(txFinalPayload));
+        alert('Transaction failed. Please try again.');
       }
-    } catch (err) {
-      console.error('6. An error occurred in handleSupport:', err);
+    } catch (error) {
+      console.error('Error supporting petition:', error);
       setSupportStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
+      alert('An error occurred. Please try again.');
+    } finally {
+      console.log('🟢 Setting isSupporting to false');
       setIsSupporting(false);
-    }
-  };
-
-  const getButtonText = () => {
-    switch (supportStatus) {
-      case 'pending':
-        return 'Supporting...';
-      case 'success':
-        return 'Supported!';
-      case 'error':
-        return 'Failed - Try Again';
-      default:
-        return 'Support This Petition';
     }
   };
 
@@ -198,13 +232,144 @@ export default function PetitionPage() {
             ></div>
           </div>
 
-          <div className="mt-6">
+          <div style={{
+            marginTop: '32px',
+            padding: '16px',
+            border: '3px solid red',
+            backgroundColor: '#ffeeee',
+            borderRadius: '8px'
+          }}>
+            <div style={{ color: 'red', fontWeight: 'bold', marginBottom: '16px' }}>
+              DEBUG: World App: {typeof window !== 'undefined' && window.location.hostname ? '✓ Running' : '✗ Not Running'} | Petition: {petition ? '✓ Loaded' : '✗ Not Loaded'} | MiniKit: {typeof MiniKit !== 'undefined' ? '✓ Available' : '✗ Not Available'}
+            </div>
+            
             <button
               onClick={handleSupport}
               disabled={isSupporting || supportStatus === 'success'}
-              className="w-full bg-blue-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+              style={{
+                width: '100%',
+                padding: '16px',
+                fontSize: '18px',
+                fontWeight: 'bold',
+                backgroundColor: isSupporting || supportStatus === 'success' ? '#cccccc' : '#0066cc',
+                color: 'white',
+                border: '2px solid #000',
+                borderRadius: '8px',
+                cursor: isSupporting || supportStatus === 'success' ? 'not-allowed' : 'pointer',
+                marginBottom: '16px'
+              }}
             >
-              {getButtonText()}
+              {isSupporting ? 'Supporting...' : supportStatus === 'success' ? 'Supported ✓' : 'Support This Petition'}
+            </button>
+            
+            <button
+              onClick={() => {
+                console.log('🟢 Test button clicked!');
+                alert('Test button works!');
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                backgroundColor: '#666666',
+                color: 'white',
+                border: '2px solid #000',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginBottom: '12px'
+              }}
+            >
+              Test Click (Debug)
+            </button>
+            
+            <button
+              onClick={async () => {
+                console.log('🔵 Testing World ID Router...');
+                const isWorking = await testWorldIdRouter();
+                alert(isWorking ? 'World ID Router is working!' : 'World ID Router test failed - check console');
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                backgroundColor: '#9333ea',
+                color: 'white',
+                border: '2px solid #000',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginBottom: '12px'
+              }}
+            >
+              Test World ID Router
+            </button>
+            
+            <button
+              onClick={async () => {
+                try {
+                  console.log('🔵 Testing complete World ID setup...');
+                  
+                  // 1. Check if World ID router exists
+                  const WORLD_ID_ROUTER = '0x57b930D551e677CC36e2fA036Ae2fe8FdaE0330D';
+                  const bytecode = await client.getBytecode({
+                    address: WORLD_ID_ROUTER as `0x${string}`
+                  });
+                  
+                  console.log('🟢 World ID Router exists:', !!bytecode);
+                  
+                  // 2. Check your contract's router
+                  const contractRouter = await client.readContract({
+                    address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+                    abi: PetitionRegistryABI,
+                    functionName: 'worldIdRouter',
+                    args: []
+                  });
+                  
+                  console.log('🟢 Contract Router:', contractRouter);
+                  
+                  // 3. Check group ID
+                  const groupId = await client.readContract({
+                    address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+                    abi: PetitionRegistryABI,
+                    functionName: 'groupId',
+                    args: []
+                  });
+                  
+                  console.log('🟢 Contract Group ID:', groupId);
+                  
+                  // 4. Compare addresses
+                  const routerMatch = contractRouter && typeof contractRouter === 'string' 
+                    ? contractRouter.toLowerCase() === WORLD_ID_ROUTER.toLowerCase()
+                    : false;
+                  const groupIdCorrect = groupId?.toString() === '1';
+                  
+                  let message = `World ID Router: ${!!bytecode ? '✓' : '✗'}\n`;
+                  message += `Contract Router: ${contractRouter}\n`;
+                  message += `Router Match: ${routerMatch ? '✓' : '✗'}\n`;
+                  message += `Group ID: ${groupId} ${groupIdCorrect ? '✓' : '✗'}\n`;
+                  
+                  if (!routerMatch) {
+                    message += `\n⚠️ Router mismatch!\nExpected: ${WORLD_ID_ROUTER}\nActual: ${contractRouter}`;
+                  }
+                  
+                  alert(message);
+                } catch (error) {
+                  console.error('🔴 Complete test failed:', error);
+                  alert('Complete test failed - check console');
+                }
+              }}
+              style={{
+                width: '100%',
+                padding: '12px',
+                fontSize: '16px',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                border: '2px solid #000',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                marginBottom: '12px'
+              }}
+            >
+              Complete World ID Test
             </button>
           </div>
 
@@ -212,6 +377,21 @@ export default function PetitionPage() {
             <p className="text-red-600 text-sm mt-2 text-center">
               Failed to support petition. Please try again.
             </p>
+          )}
+          
+          {errorMessage && (
+            <div style={{ 
+              marginTop: '16px', 
+              padding: '12px', 
+              backgroundColor: '#ffeeee', 
+              border: '1px solid #ff0000', 
+              borderRadius: '4px',
+              fontSize: '12px',
+              color: '#cc0000'
+            }}>
+              <strong>Error Details:</strong><br />
+              {errorMessage}
+            </div>
           )}
           
           {supportStatus === 'success' && (
