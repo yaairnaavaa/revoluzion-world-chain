@@ -5,7 +5,7 @@ import { Bank, Home, User, Page } from 'iconoir-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { createPublicClient, http, formatUnits } from 'viem';
+import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';

@@ -3,6 +3,7 @@
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const mockPetitions = [
   {
@@ -25,10 +26,12 @@ export default function Home() {
       <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <img 
+            <Image 
               src="/logo.png" 
               alt="Revoluzion" 
-              className="h-8 w-8 rounded-full"
+              width={32}
+              height={32}
+              className="rounded-full"
               style={{ objectFit: 'cover' }}
             />
             <span className="text-xl font-bold text-black">Revoluzion</span>
@@ -49,10 +52,12 @@ export default function Home() {
           >
             <div className="text-center">
               <div className="mb-4">
-                <img 
+                <Image 
                   src="/logo.png" 
                   alt="Revoluzion Logo" 
-                  className="mx-auto h-16 w-16 rounded-full"
+                  width={64}
+                  height={64}
+                  className="mx-auto rounded-full"
                   style={{ objectFit: 'cover' }}
                 />
               </div>

@@ -25,7 +25,13 @@ const mockPetitions = [
 ];
 
 export default function Petitions() {
-  const [petitions, setPetitions] = useState<any[]>([]);
+  const [petitions, setPetitions] = useState<{
+    id: string | number;
+    title: string;
+    description: string;
+    supportCount?: bigint;
+    signatures?: string;
+  }[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -68,7 +74,7 @@ export default function Petitions() {
           }
         }
 
-        setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions : mockPetitions);
+        setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as any : mockPetitions);
       } catch (error) {
         console.error('Error fetching petitions:', error);
         setPetitions(mockPetitions);

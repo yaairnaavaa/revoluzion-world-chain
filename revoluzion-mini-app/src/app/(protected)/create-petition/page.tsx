@@ -8,6 +8,7 @@ import { MiniKit } from '@worldcoin/minikit-js';
 import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
+import Image from 'next/image';
 import {
   PETITION_REGISTRY_ADDRESS,
   PERMIT2_ADDRESS,
@@ -113,7 +114,7 @@ const CreatePetitionPage = () => {
     };
 
     fetchContractInfo();
-  }, []);
+  }, [client]);
 
   useEffect(() => {
     if (transactionId && !isConfirming) {
@@ -140,29 +141,6 @@ const CreatePetitionPage = () => {
       }
     }
   }, [isConfirmed, isConfirming, isTransactionError, transactionError, transactionId]);
-
-  const validateForm = () => {
-    const newErrors: { [key: string]: string } = {};
-    
-    if (!formData.title.trim()) {
-      newErrors.title = 'Title is required';
-    } else if (formData.title.length < 10) {
-      newErrors.title = 'Title must be at least 10 characters long';
-    }
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    } else if (formData.description.length < 50) {
-      newErrors.description = 'Description must be at least 50 characters long';
-    }
-    
-    if (formData.goal < 1) {
-      newErrors.goal = 'Goal must be at least 1 supporter';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -317,10 +295,11 @@ const CreatePetitionPage = () => {
       } else {
         console.error('Transaction submission failed:', finalPayload);
         console.error('Full error details:', JSON.stringify(finalPayload, null, 2));
-        if ((finalPayload as any).details) {
-          console.error('Simulation error:', (finalPayload as any).details.simulationError);
-          console.error('Block:', (finalPayload as any).details.block);
-          console.error('Simulation ID:', (finalPayload as any).details.simulationId);
+        if ('details' in finalPayload && finalPayload.details) {
+          const details = finalPayload.details as any;
+          console.error('Simulation error:', details.simulationError);
+          console.error('Block:', details.block);
+          console.error('Simulation ID:', details.simulationId);
         }
         setSubmitStatus('error');
         setIsSubmitting(false);
@@ -408,10 +387,12 @@ const CreatePetitionPage = () => {
           >
             <div className="text-center">
               <div className="mb-4">
-                <img 
+                <Image 
                   src="/logo.png" 
                   alt="Revoluzion Logo" 
                   className="mx-auto h-12 w-12 rounded-full"
+                  width={48}
+                  height={48}
                   style={{ objectFit: 'cover' }}
                 />
               </div>
@@ -484,7 +465,7 @@ const CreatePetitionPage = () => {
                     Token Configuration Mismatch
                   </h3>
                   <div className="mt-1 text-sm text-red-700">
-                    The RVZ token address in the smart contract ({contractInfo.rvzTokenAddress}) doesn't match our configured address ({RVZ_TOKEN_ADDRESS}). This will cause the "Invalid token" error. Please update the environment variable or reinitialize the contract.
+                    The RVZ token address in the smart contract ({contractInfo.rvzTokenAddress}) doesn&apos;t match our configured address ({RVZ_TOKEN_ADDRESS}). This will cause the &ldquo;Invalid token&rdquo; error. Please update the environment variable or reinitialize the contract.
                   </div>
                 </div>
               </div>
@@ -609,7 +590,7 @@ const CreatePetitionPage = () => {
                     RVZ Token Burn Required
                   </h3>
                   <div className="mt-1 text-sm text-amber-700">
-                    Creating a petition requires burning 1 RVZ token via Permit2 signature. This prevents spam and ensures commitment to your cause. The transaction is processed securely through World Chain's signature system.
+                    Creating a petition requires burning 1 RVZ token via Permit2 signature. This prevents spam and ensures commitment to your cause. The transaction is processed securely through World Chain&apos;s signature system.
                   </div>
                 </div>
               </div>

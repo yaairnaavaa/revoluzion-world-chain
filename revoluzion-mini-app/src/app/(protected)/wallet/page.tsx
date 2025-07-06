@@ -9,11 +9,22 @@ import { useSession } from 'next-auth/react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import { erc20Abi } from 'viem';
+import Image from 'next/image';
 
 export default function Wallet() {
   const { address } = useAccount();
   const { data: session } = useSession();
-  const [debugInfo, setDebugInfo] = useState<any>({});
+  const [debugInfo, setDebugInfo] = useState<{
+    wagmiAddress?: string;
+    sessionAddress?: string;
+    combinedAddress?: string;
+    rvzTokenAddress?: string;
+    wldTokenAddress?: string;
+    rvzError?: string;
+    wldError?: string;
+    rvzBalanceData?: any;
+    wldBalanceData?: any;
+  }>({});
 
   // Use wagmi for balance fetching
   const walletAddress = address || session?.user?.walletAddress;
@@ -138,11 +149,13 @@ export default function Wallet() {
        <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <img 
+            <Image 
               src="/logo.png" 
               alt="Revoluzion" 
               className="h-8 w-8 rounded-full"
               style={{ objectFit: 'cover' }}
+              width={32}
+              height={32}
             />
             <span className="text-xl font-bold text-black">Revoluzion</span>
           </div>

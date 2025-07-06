@@ -1,7 +1,6 @@
 import { auth } from '@/auth';
 import ClientProviders from '@/providers';
 import '@worldcoin/mini-apps-ui-kit-react/styles.css';
-import MiniKitProvider from '@/components/minikit-provider';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import './globals.css';
@@ -30,9 +29,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} `}>
-        <MiniKitProvider>
-          <ClientProviders session={session}>{children}</ClientProviders>
-        </MiniKitProvider>
+        <ClientProviders session={session}>{children}</ClientProviders>
       </body>
     </html>
   );
