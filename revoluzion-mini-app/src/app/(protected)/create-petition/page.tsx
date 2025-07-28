@@ -176,7 +176,9 @@ const CreatePetitionPage = () => {
   
     // TODO: Handle Success!
     const verifyResponseJson = await verifyResponse.json()
+    console.log("----1---");
     console.log(verifyResponseJson);
+    console.log("----2---");
     if (verifyResponseJson.status === 200) {
       console.log('Verification success!')
     }
@@ -184,10 +186,12 @@ const CreatePetitionPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    console.log("Veririficando");
     if(!handleVerify()) {
+      console.log("Error al verificar");
       return;
     }
+    console.log("Veririficación completa");
     
     console.log('Form submitted, starting validation...');
     console.log('Current form data:', formData);
