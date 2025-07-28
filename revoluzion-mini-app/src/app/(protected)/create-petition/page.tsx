@@ -418,7 +418,7 @@ const CreatePetitionPage = () => {
         </div>
       </Page.Header>
       <Page.Main className="bg-gray-50 pb-20">
-        <div className="px-4 py-6">
+        <div className="px-4 py-6" style={{marginBottom:"60px"}}>
           {/* Hero Section */}
           <div 
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
