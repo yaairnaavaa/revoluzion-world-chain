@@ -4,7 +4,7 @@ import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
 import { useState, useEffect } from 'react';
-import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
+import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import { useParams } from 'next/navigation';
@@ -34,48 +34,6 @@ export default function PetitionPage() {
 
   console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
   console.log('🔵 Render state - petition:', !!petition, 'isSupporting:', isSupporting, 'supportStatus:', supportStatus, 'address:', !!address);
-
-    const verifyPayload: VerifyCommandInput = {
-      action: 'voting-action', // This is your action ID from the Developer Portal
-      signal: '0x12312', // Optional additional data
-      verification_level: VerificationLevel.Orb, // Orb | Device
-    }
-  
-    const handleVerify = async () => {
-      console.log("handleVerify 1");
-      if (!MiniKit.isInstalled()) {
-        console.log("MiniKit Not Ready");
-        return
-      }
-      console.log("handleVerify 2");
-      // World App will open a drawer prompting the user to confirm the operation, promise is resolved once user confirms or cancels
-      const {finalPayload} = await MiniKit.commandsAsync.verify(verifyPayload)
-        if (finalPayload.status === 'error') {
-          return console.log('Error payload', finalPayload)
-        }
-    
-        // Verify the proof in the backend
-        const verifyResponse = await fetch('/api/verify-proof', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-          payload: finalPayload as ISuccessResult, // Parses only the fields we need to verify
-          action: 'voting-action',
-          signal: '0x12312', // Optional
-        }),
-      })
-    
-      // TODO: Handle Success!
-      const verifyResponseJson = await verifyResponse.json()
-      console.log("----1---");
-      console.log(verifyResponseJson);
-      console.log("----2---");
-      if (verifyResponseJson.status === 200) {
-        console.log('Verification success!')
-      }
-    }
 
   // Test World ID Router
   const testWorldIdRouter = async () => {
@@ -158,13 +116,6 @@ export default function PetitionPage() {
 
       console.log('🟢 MiniKit is installed, proceeding with verification');
 
-
-
-      console.log("----------------------");
-      if (!MiniKit.isInstalled()) {
-        console.log("MiniKit Not Ready");
-        return
-      }
       const verifyPayload = {
         action: 'support-action',
         signal: petitionId.toString(),
@@ -173,37 +124,17 @@ export default function PetitionPage() {
 
       console.log('🟢 Verify payload:', verifyPayload);
 
-      const {finalPayload} = await MiniKit.commandsAsync.verify(verifyPayload)
-        if (finalPayload.status === 'error') {
+      const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
+
+      console.log('🟢 Verification response:', finalPayload);
+
+      if (finalPayload.status === 'error') {
         console.log('World ID verification failed:', finalPayload);
         setSupportStatus('error');
         setErrorMessage(JSON.stringify(finalPayload));
         alert('World ID verification failed. Please try again.');
         return;
       }
-    
-        // Verify the proof in the backend
-        const verifyResponse = await fetch('/api/verify-proof', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-          payload: finalPayload as ISuccessResult, // Parses only the fields we need to verify
-          action: 'support-action',
-          signal: '0x12312',
-        }),
-      })
-    
-      console.log('🟢 Verification response:', finalPayload);
-
-      const verifyResponseJson = await verifyResponse.json()
-      if (verifyResponseJson.status === 200) {
-        console.log('Verification success!')
-      }
-
-    console.log("----------------------");
-
 
       console.log('3. World ID verification successful:', finalPayload);
 
