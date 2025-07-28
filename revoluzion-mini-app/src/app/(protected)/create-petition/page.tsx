@@ -176,6 +176,7 @@ const CreatePetitionPage = () => {
   
     // TODO: Handle Success!
     const verifyResponseJson = await verifyResponse.json()
+    console.log(verifyResponseJson);
     if (verifyResponseJson.status === 200) {
       console.log('Verification success!')
     }
