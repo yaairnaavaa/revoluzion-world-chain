@@ -164,9 +164,9 @@ const CreatePetitionPage = () => {
         console.log('Error payload', finalPayload);
         return false;
       }
-	    const app_id = process.env.APP_ID as `app_${string}`
+	    const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`
       console.log("app_id");
-      console.log(process.env.APP_ID);
+      console.log(process.env.NEXT_PUBLIC_APP_ID);
       console.log(app_id);
       const verifyResponse = await fetch('/api/verify-proof', {
         method: 'POST',
