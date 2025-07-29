@@ -393,6 +393,10 @@ const CreatePetitionPage = () => {
     }
   };
 
+  const isFormValid = () => {
+    return formData.title.trim() !== '' && formData.description.trim() !== '';
+  };
+
   const getButtonText = () => {
     switch (submitStatus) {
       case 'pending':
@@ -678,7 +682,7 @@ const CreatePetitionPage = () => {
             <div className="space-y-3">
               <button
                 type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress}
+                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
                 className={getButtonClass()}
               >
                 {getButtonText()}
