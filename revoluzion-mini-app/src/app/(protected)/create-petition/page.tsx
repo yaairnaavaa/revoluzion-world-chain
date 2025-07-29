@@ -23,7 +23,7 @@ const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
 const CreatePetitionPage = () => {
   const { address } = useAccount();
   const { data: session } = useSession();
-  
+
   // Use wagmi address first, fallback to session address
   const walletAddress = address || session?.user?.walletAddress;
   const [formData, setFormData] = useState({
@@ -148,75 +148,88 @@ const CreatePetitionPage = () => {
     verification_level: VerificationLevel.Orb, // Orb | Device
   }
 
-  const handleVerify = async () => {
+  const handleVerify = async (): Promise<boolean> => {
     console.log("handleVerify 1");
     if (!MiniKit.isInstalled()) {
       console.log("MiniKit Not Ready");
-      return
+      return false;
     }
+
     console.log("handleVerify 2");
-    // World App will open a drawer prompting the user to confirm the operation, promise is resolved once user confirms or cancels
-    const {finalPayload} = await MiniKit.commandsAsync.verify(verifyPayload)
+
+    try {
+      const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
+
       if (finalPayload.status === 'error') {
-        return console.log('Error payload', finalPayload)
+        console.log('Error payload', finalPayload);
+        return false;
       }
-  
-      // Verify the proof in the backend
+
       const verifyResponse = await fetch('/api/verify-proof', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-        payload: finalPayload as ISuccessResult, // Parses only the fields we need to verify
-        action: 'voting-action',
-        signal: '0x12312', // Optional
-      }),
-    })
-  
-    // TODO: Handle Success!
-    const verifyResponseJson = await verifyResponse.json()
-    console.log("----1---");
-    console.log(verifyResponseJson);
-    console.log("----2---");
-    if (verifyResponseJson.status === 200) {
-      console.log('Verification success!')
+          payload: finalPayload as ISuccessResult,
+          action: 'voting-action',
+          signal: '0x12312',
+        }),
+      });
+
+      const verifyResponseJson = await verifyResponse.json();
+      console.log("----1---");
+      console.log(verifyResponseJson);
+      console.log("----2---");
+
+      if (verifyResponseJson.status === 200) {
+        console.log('Verification success!');
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Verification error:', err);
+      return false;
     }
-  }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Veririficando");
-    if(!handleVerify()) {
+    const isVerified = await handleVerify();
+
+  if (!isVerified) {
       console.log("Error al verificar");
       return;
     }
     console.log("Veririficación completa");
-    
+
     console.log('Form submitted, starting validation...');
     console.log('Current form data:', formData);
-    
+
     // Run validation and get the errors directly
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
     } else if (formData.title.length < 10) {
       newErrors.title = 'Title must be at least 10 characters long';
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     } else if (formData.description.length < 50) {
       newErrors.description = 'Description must be at least 50 characters long';
     }
-    
+
     if (formData.goal < 1) {
       newErrors.goal = 'Goal must be at least 1 supporter';
     }
-    
+
     setErrors(newErrors);
-    
+
     if (Object.keys(newErrors).length > 0) {
       console.error('Form validation failed:', newErrors);
       return;
@@ -245,9 +258,9 @@ const CreatePetitionPage = () => {
         address: RVZ_TOKEN_ADDRESS as `0x${string}`,
         abi: [
           {
-            "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
             "name": "balanceOf",
-            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
             "stateMutability": "view",
             "type": "function"
           }
@@ -284,7 +297,7 @@ const CreatePetitionPage = () => {
       const nonce = Date.now(); // Use timestamp as nonce for simplicity
 
       // Use the contract's burn amount instead of hardcoded value
-      
+
       console.log('Creating petition with Permit2:', {
         title: formData.title,
         description: formData.description,
@@ -367,7 +380,7 @@ const CreatePetitionPage = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -408,7 +421,7 @@ const CreatePetitionPage = () => {
       <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <button 
+            <button
               className="text-red-600 font-semibold"
               onClick={() => window.history.back()}
             >
@@ -422,9 +435,9 @@ const CreatePetitionPage = () => {
         </div>
       </Page.Header>
       <Page.Main className="bg-gray-50 pb-20">
-        <div className="px-4 py-6" style={{marginBottom:"60px"}}>
+        <div className="px-4 py-6" style={{ marginBottom: "60px" }}>
           {/* Hero Section */}
-          <div 
+          <div
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
             style={{
               background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
@@ -432,9 +445,9 @@ const CreatePetitionPage = () => {
           >
             <div className="text-center">
               <div className="mb-4">
-                <Image 
-                  src="/logo.png" 
-                  alt="Revoluzion Logo" 
+                <Image
+                  src="/logo.png"
+                  alt="Revoluzion Logo"
                   className="mx-auto h-12 w-12 rounded-full"
                   width={48}
                   height={48}
@@ -479,14 +492,14 @@ const CreatePetitionPage = () => {
               <p><strong>Session Address:</strong> {session?.user?.walletAddress || 'Not available'}</p>
               <p><strong>Combined Address:</strong> {walletAddress || 'Not available'}</p>
               <p><strong>Can Create Petition:</strong> {walletAddress ? 'Yes' : 'No'}</p>
-              
+
               <div className="mt-3 pt-2 border-t border-gray-300">
                 <p><strong>Contract Configuration:</strong></p>
                 <p className="ml-2">• Contract RVZ Token: {contractInfo.rvzTokenAddress || 'Loading...'}</p>
                 <p className="ml-2">• Our RVZ Token: {RVZ_TOKEN_ADDRESS}</p>
                 <p className="ml-2">• Tokens Match: {
-                  contractInfo.isInitialized 
-                    ? (contractInfo.rvzTokenAddress === RVZ_TOKEN_ADDRESS ? '✅ Yes' : '❌ No') 
+                  contractInfo.isInitialized
+                    ? (contractInfo.rvzTokenAddress === RVZ_TOKEN_ADDRESS ? '✅ Yes' : '❌ No')
                     : 'Loading...'
                 }</p>
                 <p className="ml-2">• Contract Permit2: {contractInfo.permit2Address || 'Loading...'}</p>
@@ -570,9 +583,8 @@ const CreatePetitionPage = () => {
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 placeholder="What change do you want to see?"
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${
-                  errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                  }`}
                 maxLength={100}
               />
               {errors.title && (
@@ -590,9 +602,8 @@ const CreatePetitionPage = () => {
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder="Explain why this petition matters. What's the problem? What solution are you proposing? Why should people care?"
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none ${
-                  errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none ${errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                  }`}
                 maxLength={1000}
               />
               {errors.description && (
@@ -606,7 +617,7 @@ const CreatePetitionPage = () => {
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Support Goal *
               </label>
-              <select 
+              <select
                 value={formData.goal}
                 onChange={(e) => handleInputChange('goal', parseInt(e.target.value))}
                 className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
