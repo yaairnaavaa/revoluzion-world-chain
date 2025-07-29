@@ -10,6 +10,10 @@ interface IRequestPayload {
 export async function POST(req: NextRequest) {
 	const { payload, action, signal } = (await req.json()) as IRequestPayload
 	const app_id = process.env.APP_ID as `app_${string}`
+	console.log("action: "+action);
+	console.log("signal: "+signal);
+	console.log("app_id: "+app_id);
+	console.log(payload);
 	const verifyRes = (await verifyCloudProof(payload, app_id, action, signal)) as IVerifyResponse // Wrapper on this
 
 	if (verifyRes.success) {
