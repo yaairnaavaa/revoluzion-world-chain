@@ -683,7 +683,7 @@ const CreatePetitionPage = () => {
               <button
                 type="submit"
                 disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
-                className={getButtonClass()}
+                className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
                 {getButtonText()}
               </button>
