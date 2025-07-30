@@ -145,8 +145,8 @@ export default function PetitionPage() {
       const successPayload = finalPayload as ISuccessResult;
       console.log("------------successPayload------------");
       console.log(successPayload);
-      const unpackedProof = abi.decode(['uint256[8]'], successPayload.proof)[0]
-
+      const unpackedProof = abi.decode(['uint256[8]'], successPayload.proof)[0] as string[];
+      const proofBigInts = unpackedProof.map((p: string): bigint => BigInt(p)) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
 
       const txPayload = {
         transaction: [
@@ -158,7 +158,7 @@ export default function PetitionPage() {
               BigInt(petitionId),
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
-              unpackedProof.map((p: any) => BigInt(p)),
+              proofBigInts,
             ],
           },
         ],
