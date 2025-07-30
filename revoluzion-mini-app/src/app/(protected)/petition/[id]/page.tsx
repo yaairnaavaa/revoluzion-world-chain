@@ -142,6 +142,8 @@ export default function PetitionPage() {
       console.log('4. Preparing transaction...');
       
       const successPayload = finalPayload as ISuccessResult;
+      console.log("------------successPayload------------");
+      console.log(successPayload);
       
       const txPayload = {
         transaction: [
