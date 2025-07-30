@@ -88,20 +88,6 @@ export default function PetitionPage() {
     fetchPetition();
   }, [petitionId, client]);
 
-
-
-  function unpackProof(proofBytes: string): [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint] {
-    const bytes = ethers.utils.arrayify(proofBytes); // convierte el hex string en bytes
-    const proof: bigint[] = [];
-
-    for (let i = 0; i < 8; i++) {
-      const chunk = bytes.slice(i * 32, (i + 1) * 32);
-      proof.push(BigInt(ethers.utils.hexlify(chunk)));
-    }
-
-    return proof as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-  }
-
   const handleSupport = async () => {
     console.log('🔵 Button clicked! Starting handleSupport...');
     console.log('🔵 Address:', address);
