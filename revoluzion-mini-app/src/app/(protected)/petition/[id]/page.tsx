@@ -10,7 +10,6 @@ import { worldchain } from 'viem/chains';
 import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
-import { ethers } from 'ethers';
 import { defaultAbiCoder as abi } from 'ethers/lib/utils'
 
 export default function PetitionPage() {
