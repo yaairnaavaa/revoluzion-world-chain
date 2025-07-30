@@ -10,12 +10,13 @@ import { worldchain } from 'viem/chains';
 import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
+import { ethers } from 'ethers';
 
 export default function PetitionPage() {
   const params = useParams();
   const petitionId = params.id ? parseInt(params.id as string) : 0;
   const { address } = useAccount();
-  
+
   const [petition, setPetition] = useState<{
     title: string;
     description: string;
@@ -39,15 +40,15 @@ export default function PetitionPage() {
   const testWorldIdRouter = async () => {
     try {
       console.log('🔵 Testing World ID Router...');
-      
+
       // World ID Router address on mainnet
       const WORLD_ID_ROUTER = '0x57b930D551e677CC36e2fA036Ae2fe8FdaE0330D';
-      
+
       // Just check if the contract exists by getting its bytecode
       const bytecode = await client.getBytecode({
         address: WORLD_ID_ROUTER as `0x${string}`
       });
-      
+
       if (bytecode && bytecode !== '0x') {
         console.log('🟢 World ID Router contract exists and has bytecode');
         return true;
@@ -86,15 +87,29 @@ export default function PetitionPage() {
     fetchPetition();
   }, [petitionId, client]);
 
+
+
+  function unpackProof(proofBytes: string): [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint] {
+    const bytes = ethers.utils.arrayify(proofBytes); // convierte el hex string en bytes
+    const proof: bigint[] = [];
+
+    for (let i = 0; i < 8; i++) {
+      const chunk = bytes.slice(i * 32, (i + 1) * 32);
+      proof.push(BigInt(ethers.utils.hexlify(chunk)));
+    }
+
+    return proof as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+  }
+
   const handleSupport = async () => {
     console.log('🔵 Button clicked! Starting handleSupport...');
     console.log('🔵 Address:', address);
     console.log('🔵 Petition:', petition);
     console.log('🔵 isSupporting:', isSupporting);
-    
+
     // In World App Mini Apps, we don't need a traditional wallet connection
     // The World App handles the wallet connection internally
-    
+
     if (!petition || isSupporting) {
       console.log('🔴 No petition or already supporting, returning');
       return;
@@ -107,7 +122,7 @@ export default function PetitionPage() {
 
       // Step 1: Verify with World ID
       console.log('2. Verifying with World ID...');
-      
+
       if (!MiniKit.isInstalled()) {
         console.warn("Tried to invoke 'verify', but MiniKit is not installed.");
         alert("MiniKit is not installed. Please make sure you're running this in the World App.");
@@ -140,11 +155,11 @@ export default function PetitionPage() {
 
       // Step 2: Send transaction with verified proof
       console.log('4. Preparing transaction...');
-      
+
       const successPayload = finalPayload as ISuccessResult;
       console.log("------------successPayload------------");
       console.log(successPayload);
-      
+
       const txPayload = {
         transaction: [
           {
@@ -155,15 +170,17 @@ export default function PetitionPage() {
               petitionId,
               successPayload.merkle_root,
               successPayload.nullifier_hash,
-              successPayload.proof,
+              unpackProof(successPayload.proof),
             ],
           },
         ],
       };
 
+      console.log(txPayload);
+
       console.log('5. Sending transaction...');
       const { finalPayload: txFinalPayload } = await MiniKit.commandsAsync.sendTransaction(txPayload);
-      
+
       console.log('6. Transaction response:', txFinalPayload);
 
       if (txFinalPayload.status === 'success') {
@@ -209,7 +226,7 @@ export default function PetitionPage() {
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 w-full">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">{petition.title}</h1>
           <p className="text-gray-600 mb-6 whitespace-pre-wrap">{petition.description}</p>
-          
+
           <div className="flex justify-between items-center mb-6">
             <div>
               <span className="text-sm text-gray-500">Current Support:</span>
@@ -226,10 +243,10 @@ export default function PetitionPage() {
           </div>
 
           <div className="w-full bg-gray-200 rounded-full h-2 mb-6">
-            <div 
+            <div
               className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-              style={{ 
-                width: `${Math.min(100, (Number(petition.supportCount || 0) / Number(petition.goal || 100)) * 100)}%` 
+              style={{
+                width: `${Math.min(100, (Number(petition.supportCount || 0) / Number(petition.goal || 100)) * 100)}%`
               }}
             ></div>
           </div>
@@ -244,7 +261,7 @@ export default function PetitionPage() {
             <div style={{ color: 'red', fontWeight: 'bold', marginBottom: '16px' }}>
               DEBUG: World App: {typeof window !== 'undefined' && window.location.hostname ? '✓ Running' : '✗ Not Running'} | Petition: {petition ? '✓ Loaded' : '✗ Not Loaded'} | MiniKit: {typeof MiniKit !== 'undefined' ? '✓ Available' : '✗ Not Available'}
             </div>
-            
+
             <button
               onClick={handleSupport}
               disabled={isSupporting || supportStatus === 'success'}
@@ -263,7 +280,7 @@ export default function PetitionPage() {
             >
               {isSupporting ? 'Supporting...' : supportStatus === 'success' ? 'Supported ✓' : 'Support This Petition'}
             </button>
-            
+
             <button
               onClick={() => {
                 console.log('🟢 Test button clicked!');
@@ -283,7 +300,7 @@ export default function PetitionPage() {
             >
               Test Click (Debug)
             </button>
-            
+
             <button
               onClick={async () => {
                 console.log('🔵 Testing World ID Router...');
@@ -304,20 +321,20 @@ export default function PetitionPage() {
             >
               Test World ID Router
             </button>
-            
+
             <button
               onClick={async () => {
                 try {
                   console.log('🔵 Testing complete World ID setup...');
-                  
+
                   // 1. Check if World ID router exists
                   const WORLD_ID_ROUTER = '0x57b930D551e677CC36e2fA036Ae2fe8FdaE0330D';
                   const bytecode = await client.getBytecode({
                     address: WORLD_ID_ROUTER as `0x${string}`
                   });
-                  
+
                   console.log('🟢 World ID Router exists:', !!bytecode);
-                  
+
                   // 2. Check your contract's router
                   const contractRouter = await client.readContract({
                     address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
@@ -325,9 +342,9 @@ export default function PetitionPage() {
                     functionName: 'worldIdRouter',
                     args: []
                   });
-                  
+
                   console.log('🟢 Contract Router:', contractRouter);
-                  
+
                   // 3. Check group ID
                   const groupId = await client.readContract({
                     address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
@@ -335,24 +352,24 @@ export default function PetitionPage() {
                     functionName: 'groupId',
                     args: []
                   });
-                  
+
                   console.log('🟢 Contract Group ID:', groupId);
-                  
+
                   // 4. Compare addresses
-                  const routerMatch = contractRouter && typeof contractRouter === 'string' 
+                  const routerMatch = contractRouter && typeof contractRouter === 'string'
                     ? contractRouter.toLowerCase() === WORLD_ID_ROUTER.toLowerCase()
                     : false;
                   const groupIdCorrect = groupId?.toString() === '1';
-                  
+
                   let message = `World ID Router: ${!!bytecode ? '✓' : '✗'}\n`;
                   message += `Contract Router: ${contractRouter}\n`;
                   message += `Router Match: ${routerMatch ? '✓' : '✗'}\n`;
                   message += `Group ID: ${groupId} ${groupIdCorrect ? '✓' : '✗'}\n`;
-                  
+
                   if (!routerMatch) {
                     message += `\n⚠️ Router mismatch!\nExpected: ${WORLD_ID_ROUTER}\nActual: ${contractRouter}`;
                   }
-                  
+
                   alert(message);
                 } catch (error) {
                   console.error('🔴 Complete test failed:', error);
@@ -380,13 +397,13 @@ export default function PetitionPage() {
               Failed to support petition. Please try again.
             </p>
           )}
-          
+
           {errorMessage && (
-            <div style={{ 
-              marginTop: '16px', 
-              padding: '12px', 
-              backgroundColor: '#ffeeee', 
-              border: '1px solid #ff0000', 
+            <div style={{
+              marginTop: '16px',
+              padding: '12px',
+              backgroundColor: '#ffeeee',
+              border: '1px solid #ff0000',
               borderRadius: '4px',
               fontSize: '12px',
               color: '#cc0000'
@@ -395,7 +412,7 @@ export default function PetitionPage() {
               {errorMessage}
             </div>
           )}
-          
+
           {supportStatus === 'success' && (
             <p className="text-green-600 text-sm mt-2 text-center">
               Thank you for your support!
