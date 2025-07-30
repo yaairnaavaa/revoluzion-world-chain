@@ -11,6 +11,7 @@ import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { ethers } from 'ethers';
+import { defaultAbiCoder as abi } from 'ethers/lib/utils'
 
 export default function PetitionPage() {
   const params = useParams();
@@ -159,6 +160,8 @@ export default function PetitionPage() {
       const successPayload = finalPayload as ISuccessResult;
       console.log("------------successPayload------------");
       console.log(successPayload);
+      const unpackedProof = abi.decode(['uint256[8]'], successPayload.proof)[0]
+
 
       const txPayload = {
         transaction: [
@@ -170,7 +173,7 @@ export default function PetitionPage() {
               petitionId,
               successPayload.merkle_root,
               successPayload.nullifier_hash,
-              unpackProof(successPayload.proof),
+              unpackedProof,
             ],
           },
         ],
