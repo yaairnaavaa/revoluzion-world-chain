@@ -122,7 +122,7 @@ export default function PetitionPage() {
 
       const verifyPayload = {
         action: 'support-action',
-        signal: `${walletAddress}_p${petitionId}`,
+        signal: walletAddress + "p" + petitionId.toString(),
         verification_level: VerificationLevel.Orb,
       };
 
