@@ -34,8 +34,8 @@ export default function PetitionPage() {
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
   });
 
-  console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
-  console.log('🔵 Render state - petition:', !!petition, 'isSupporting:', isSupporting, 'supportStatus:', supportStatus, 'address:', !!address);
+  //console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
+  //console.log('🔵 Render state - petition:', !!petition, 'isSupporting:', isSupporting, 'supportStatus:', supportStatus, 'address:', !!address);
 
   // Test World ID Router
   const testWorldIdRouter = async () => {
