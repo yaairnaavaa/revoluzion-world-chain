@@ -12,6 +12,7 @@ import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { decodeAbiParameters, parseAbiParameters } from 'viem'
 import { useSession } from 'next-auth/react';
+import { ethers } from 'ethers';
 
 export default function PetitionPage() {
   const params = useParams();
@@ -122,7 +123,7 @@ export default function PetitionPage() {
 
       const verifyPayload = {
         action: 'support-action',
-        signal: walletAddress + "p" + petitionId.toString(),
+        signal: walletAddress + petitionId.toString(),
         verification_level: VerificationLevel.Orb,
       };
 
