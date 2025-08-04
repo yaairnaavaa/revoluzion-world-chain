@@ -11,8 +11,6 @@ import { worldchain } from 'viem/chains';
 import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
-import { defaultAbiCoder as abi } from 'ethers/lib/utils'
-import { IDKitWidget, ISuccessResult as ISuccessResult2, useIDKit } from '@worldcoin/idkit'
 import { decodeAbiParameters, parseAbiParameters } from 'viem'
 
 export default function PetitionPage() {
