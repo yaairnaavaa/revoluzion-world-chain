@@ -146,7 +146,6 @@ export default function PetitionPage() {
             functionName: 'verifyOnly',
             args: [
               walletAddress,
-              petitionId,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
               decodeAbiParameters(
