@@ -122,7 +122,7 @@ export default function PetitionPage() {
 
       const verifyPayload = {
         action: 'support-action',
-        signal: `${walletAddress}-${petitionId}`,
+        signal: `${walletAddress}_p${petitionId}`,
         verification_level: VerificationLevel.Orb,
       };
 
@@ -157,6 +157,7 @@ export default function PetitionPage() {
             functionName: 'verifyOnly',
             args: [
               walletAddress,
+              petitionId,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
               decodeAbiParameters(

@@ -890,6 +890,11 @@
 					},
 					{
 						"internalType": "uint256",
+						"name": "petitionId",
+						"type": "uint256"
+					},
+					{
+						"internalType": "uint256",
 						"name": "root",
 						"type": "uint256"
 					},
