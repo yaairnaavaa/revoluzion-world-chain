@@ -3,7 +3,6 @@
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
-import TestVerifyABI from '@/abi/TestVerify.json';
 import { useState, useEffect } from 'react';
 import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js';
 import { createPublicClient, http } from 'viem';
@@ -153,11 +152,11 @@ export default function PetitionPage() {
       const txPayload = {
         transaction: [
           {
-            address: "0xDEab29102bC82BD86101d8aC8ba1b07c255e2AE1" as `0x${string}`,
-            abi: TestVerifyABI,
-            functionName: 'verifyAndExecute',
+            address: "0x255286d8D754474e95e4485eCaE0c60D889803F6" as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'supportPetition',
             args: [
-              walletAddress,
+              petitionId,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
               decodeAbiParameters(
