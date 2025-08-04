@@ -124,7 +124,7 @@ export default function Petitions() {
               </div>
             ))}
             
-            <div className="text-center pt-4" style={{marginBottom: "50px"}}>
+            <div className="text-center pt-4" style={{marginBottom: "70px"}}>
               <Link 
                 href="/create-petition"
                 className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
