@@ -12,6 +12,7 @@ import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { decodeAbiParameters, parseAbiParameters } from 'viem'
 import { useSession } from 'next-auth/react';
+import { encodePacked } from 'viem';
 
 export default function PetitionPage() {
   const params = useParams();
@@ -120,17 +121,15 @@ export default function PetitionPage() {
 
       console.log('🟢 MiniKit is installed, proceeding with verification');
 
+      const signal = encodePacked(['uint256'], [BigInt(petitionId)]);
+
       const verifyPayload = {
         action: 'support-action',
-        signal: petitionId.toString(),
+        signal: signal,
         verification_level: VerificationLevel.Orb,
       };
 
-      console.log('🟢 Verify payload:', verifyPayload);
-
       const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
-
-      console.log('🟢 Verification response:', finalPayload);
 
       if (finalPayload.status === 'error') {
         console.log('World ID verification failed:', finalPayload);
@@ -140,14 +139,7 @@ export default function PetitionPage() {
         return;
       }
 
-      console.log('3. World ID verification successful:', finalPayload);
-
-      // Step 2: Send transaction with verified proof
-      console.log('4. Preparing transaction...');
-
       const successPayload = finalPayload as ISuccessResult;
-      console.log("------------successPayload------------");
-      console.log(successPayload);
 
       const txPayload = {
         transaction: [
