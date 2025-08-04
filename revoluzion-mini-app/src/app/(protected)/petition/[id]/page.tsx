@@ -143,8 +143,9 @@ export default function PetitionPage() {
           {
             address: "0x255286d8D754474e95e4485eCaE0c60D889803F6" as `0x${string}`,
             abi: PetitionRegistryABI,
-            functionName: 'verifyOnly',
+            functionName: 'supportPetition',
             args: [
+              petitionId,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
               decodeAbiParameters(
