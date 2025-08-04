@@ -150,7 +150,7 @@ export default function PetitionPage() {
       const txPayload = {
         transaction: [
           {
-            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            address: "0xDEab29102bC82BD86101d8aC8ba1b07c255e2AE1" as `0x${string}`,
             abi: TestVerifyABI,
             functionName: 'verifyAndExecute',
             args: [
