@@ -12,7 +12,6 @@ import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { decodeAbiParameters, parseAbiParameters } from 'viem'
 import { useSession } from 'next-auth/react';
-import { encodePacked } from 'viem';
 
 export default function PetitionPage() {
   const params = useParams();
@@ -121,11 +120,9 @@ export default function PetitionPage() {
 
       console.log('🟢 MiniKit is installed, proceeding with verification');
 
-      const signal = encodePacked(['uint256'], [BigInt(petitionId)]);
-
       const verifyPayload = {
         action: 'support-action',
-        signal: signal,
+        signal: walletAddress,
         verification_level: VerificationLevel.Orb,
       };
 
@@ -148,6 +145,7 @@ export default function PetitionPage() {
             abi: PetitionRegistryABI,
             functionName: 'verifyOnly',
             args: [
+              walletAddress,
               petitionId,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
