@@ -884,11 +884,6 @@
 			{
 				"inputs": [
 					{
-						"internalType": "address",
-						"name": "signal",
-						"type": "address"
-					},
-					{
 						"internalType": "uint256",
 						"name": "petitionId",
 						"type": "uint256"
