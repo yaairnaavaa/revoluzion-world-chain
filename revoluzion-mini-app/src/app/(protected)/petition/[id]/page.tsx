@@ -3,6 +3,7 @@
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+import TestVerifyABI from '@/abi/TestVerify.json';
 import { useState, useEffect } from 'react';
 import { MiniKit, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js';
 import { createPublicClient, http } from 'viem';
@@ -11,6 +12,8 @@ import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { defaultAbiCoder as abi } from 'ethers/lib/utils'
+import { IDKitWidget, ISuccessResult as ISuccessResult2, useIDKit } from '@worldcoin/idkit'
+import { decodeAbiParameters, parseAbiParameters } from 'viem'
 
 export default function PetitionPage() {
   const params = useParams();
@@ -119,7 +122,7 @@ export default function PetitionPage() {
 
       const verifyPayload = {
         action: 'support-action',
-        signal: petitionId.toString(),
+        signal: address,
         verification_level: VerificationLevel.Orb,
       };
 
@@ -146,23 +149,20 @@ export default function PetitionPage() {
       console.log("------------successPayload------------");
       console.log(successPayload);
 
-      const unpackedProof = abi.decode(['uint256[8]'], successPayload.proof)[0] as string[];
-      if (unpackedProof.length !== 8) {
-        throw new Error('Invalid proof length');
-      }
-      const proofBigInts = unpackedProof.map(p => BigInt(p)) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
-
       const txPayload = {
         transaction: [
           {
             address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
-            abi: PetitionRegistryABI,
-            functionName: 'supportPetition',
+            abi: TestVerifyABI,
+            functionName: 'verifyAndExecute',
             args: [
-              BigInt(petitionId),
+              address,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
-              proofBigInts
+              decodeAbiParameters(
+                parseAbiParameters('uint256[8]'),
+                successPayload.proof as `0x${string}`
+              )[0],
             ],
           },
         ],
@@ -199,6 +199,119 @@ export default function PetitionPage() {
       setIsSupporting(false);
     }
   };
+
+  // const handleSupport = async () => {
+  //   console.log('🔵 Button clicked! Starting handleSupport...');
+  //   console.log('🔵 Address:', address);
+  //   console.log('🔵 Petition:', petition);
+  //   console.log('🔵 isSupporting:', isSupporting);
+
+  //   // In World App Mini Apps, we don't need a traditional wallet connection
+  //   // The World App handles the wallet connection internally
+
+  //   if (!petition || isSupporting) {
+  //     console.log('🔴 No petition or already supporting, returning');
+  //     return;
+  //   }
+
+  //   try {
+  //     console.log('🟢 Setting isSupporting to true');
+  //     setIsSupporting(true);
+  //     console.log('1. Starting support process...');
+
+  //     // Step 1: Verify with World ID
+  //     console.log('2. Verifying with World ID...');
+
+  //     if (!MiniKit.isInstalled()) {
+  //       console.warn("Tried to invoke 'verify', but MiniKit is not installed.");
+  //       alert("MiniKit is not installed. Please make sure you're running this in the World App.");
+  //       return;
+  //     }
+
+  //     console.log('🟢 MiniKit is installed, proceeding with verification');
+
+  //     const verifyPayload = {
+  //       action: 'support-action',
+  //       signal: petitionId.toString(),
+  //       verification_level: VerificationLevel.Orb,
+  //     };
+
+  //     console.log('🟢 Verify payload:', verifyPayload);
+
+  //     const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
+
+  //     console.log('🟢 Verification response:', finalPayload);
+
+  //     if (finalPayload.status === 'error') {
+  //       console.log('World ID verification failed:', finalPayload);
+  //       setSupportStatus('error');
+  //       setErrorMessage(JSON.stringify(finalPayload));
+  //       alert('World ID verification failed. Please try again.');
+  //       return;
+  //     }
+
+  //     console.log('3. World ID verification successful:', finalPayload);
+
+  //     // Step 2: Send transaction with verified proof
+  //     console.log('4. Preparing transaction...');
+
+  //     const successPayload = finalPayload as ISuccessResult;
+  //     console.log("------------successPayload------------");
+  //     console.log(successPayload);
+
+  //     const unpackedProof = abi.decode(['uint256[8]'], successPayload.proof)[0] as string[];
+  //     if (unpackedProof.length !== 8) {
+  //       throw new Error('Invalid proof length');
+  //     }
+  //     const proofBigInts = unpackedProof.map(p => BigInt(p)) as [bigint, bigint, bigint, bigint, bigint, bigint, bigint, bigint];
+
+  //     const txPayload = {
+  //       transaction: [
+  //         {
+  //           address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+  //           abi: PetitionRegistryABI,
+  //           functionName: 'supportPetition',
+  //           args: [
+  //             BigInt(petitionId),
+  //             BigInt(successPayload.merkle_root),
+  //             BigInt(successPayload.nullifier_hash),
+  //             proofBigInts
+  //           ],
+  //         },
+  //       ],
+  //     };
+
+  //     console.log(txPayload);
+
+  //     console.log('5. Sending transaction...');
+  //     const { finalPayload: txFinalPayload } = await MiniKit.commandsAsync.sendTransaction(txPayload);
+
+  //     console.log('6. Transaction response:', txFinalPayload);
+
+  //     if (txFinalPayload.status === 'success') {
+  //       console.log('Transaction successful!');
+  //       setSupportStatus('success');
+  //       alert('Successfully supported the petition!');
+  //       // Refresh the page to show updated data
+  //       setTimeout(() => {
+  //         setSupportStatus('idle');
+  //       }, 5000);
+  //     } else {
+  //       console.error('Transaction failed:', txFinalPayload);
+  //       setSupportStatus('error');
+  //       setErrorMessage(JSON.stringify(txFinalPayload));
+  //       alert('Transaction failed. Please try again.');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error supporting petition:', error);
+  //     setSupportStatus('error');
+  //     setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
+  //     alert('An error occurred. Please try again.');
+  //   } finally {
+  //     console.log('🟢 Setting isSupporting to false');
+  //     setIsSupporting(false);
+  //   }
+  // };
 
   if (!petition) {
     return (
