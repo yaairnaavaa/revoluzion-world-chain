@@ -12,11 +12,14 @@ import { useParams } from 'next/navigation';
 import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { decodeAbiParameters, parseAbiParameters } from 'viem'
+import { useSession } from 'next-auth/react';
 
 export default function PetitionPage() {
   const params = useParams();
   const petitionId = params.id ? parseInt(params.id as string) : 0;
   const { address } = useAccount();
+  const { data: session } = useSession();
+  const walletAddress = address || session?.user?.walletAddress;
 
   const [petition, setPetition] = useState<{
     title: string;
@@ -90,7 +93,7 @@ export default function PetitionPage() {
 
   const handleSupport = async () => {
     console.log('🔵 Button clicked! Starting handleSupport...');
-    console.log('🔵 Address:', address);
+    console.log('🔵 Address:', walletAddress);
     console.log('🔵 Petition:', petition);
     console.log('🔵 isSupporting:', isSupporting);
 
@@ -120,7 +123,7 @@ export default function PetitionPage() {
 
       const verifyPayload = {
         action: 'support-action',
-        signal: address,
+        signal: walletAddress,
         verification_level: VerificationLevel.Orb,
       };
 
@@ -154,7 +157,7 @@ export default function PetitionPage() {
             abi: TestVerifyABI,
             functionName: 'verifyAndExecute',
             args: [
-              address,
+              walletAddress,
               BigInt(successPayload.merkle_root),
               BigInt(successPayload.nullifier_hash),
               decodeAbiParameters(
