@@ -166,7 +166,7 @@ export default function Wallet() {
       </Page.Header>
 
       <Page.Main className="bg-gray-50">
-        <div className="px-4 py-6">
+        <div className="px-4 py-6" style={{marginBottom: "50px"}}>
           <div 
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
             style={{
