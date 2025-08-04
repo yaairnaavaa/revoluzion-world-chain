@@ -52,6 +52,8 @@ export default function Petitions() {
 
       try {
         // Get petition count first
+        console.log("PETITION_REGISTRY_ADDRESS");
+        console.log(PETITION_REGISTRY_ADDRESS);
         const count = await client.readContract({
           address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
           abi: PetitionRegistryABI,
