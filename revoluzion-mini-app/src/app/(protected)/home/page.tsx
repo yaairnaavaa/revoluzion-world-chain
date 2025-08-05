@@ -196,7 +196,7 @@ export default function Home() {
               <div className="space-y-4">
                 <ul>
                   {petitions.map((petition) => (
-                    <li key={petition.id}>
+                    <li key={petition.id} style={{marginTop:"5px"}}>
                       <Link href={`/petition/${petition.id}`}>
                         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-gray-200 transition-all">
                           <h3 className="font-bold text-gray-900">{petition.title}</h3>

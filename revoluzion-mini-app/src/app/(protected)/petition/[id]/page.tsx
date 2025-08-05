@@ -345,7 +345,26 @@ export default function PetitionPage() {
             ></div>
           </div>
 
-          <div style={{
+          <button
+            onClick={handleSupport}
+            disabled={isSupporting || supportStatus === 'success'}
+            style={{
+              width: '100%',
+              padding: '16px',
+              fontSize: '18px',
+              fontWeight: 'bold',
+              backgroundColor: isSupporting || supportStatus === 'success' ? '#cccccc' : '#0066cc',
+              color: 'white',
+              border: '2px solid #000',
+              borderRadius: '8px',
+              cursor: isSupporting || supportStatus === 'success' ? 'not-allowed' : 'pointer',
+              marginBottom: '16px'
+            }}
+          >
+            {isSupporting ? 'Supporting...' : supportStatus === 'success' ? 'Supported ✓' : 'Support This Petition'}
+          </button>
+
+          {/* <div style={{
             marginTop: '32px',
             padding: '16px',
             border: '3px solid red',
@@ -505,7 +524,7 @@ export default function PetitionPage() {
               <strong>Error Details:</strong><br />
               {errorMessage}
             </div>
-          )}
+          )} */}
 
           {supportStatus === 'success' && (
             <p className="text-green-600 text-sm mt-2 text-center">
