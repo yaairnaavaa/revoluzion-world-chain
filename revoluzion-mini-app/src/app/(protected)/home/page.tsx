@@ -38,59 +38,59 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-      const fetchPetitions = async () => {
-        if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
-          console.warn('PetitionRegistry contract address not set, using mock data.');
-          setPetitions(mockPetitions);
-          setLoading(false);
-          return;
-        }
-  
-        const client = createPublicClient({
-          chain: worldchain,
-          transport: http(),
+    const fetchPetitions = async () => {
+      if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
+        console.warn('PetitionRegistry contract address not set, using mock data.');
+        setPetitions(mockPetitions);
+        setLoading(false);
+        return;
+      }
+
+      const client = createPublicClient({
+        chain: worldchain,
+        transport: http(),
+      });
+
+      try {
+        // Get petition count first
+        console.log("PETITION_REGISTRY_ADDRESS");
+        console.log(PETITION_REGISTRY_ADDRESS);
+        const count = await client.readContract({
+          address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+          abi: PetitionRegistryABI,
+          functionName: 'petitionCount',
         });
-  
-        try {
-          // Get petition count first
-          console.log("PETITION_REGISTRY_ADDRESS");
-          console.log(PETITION_REGISTRY_ADDRESS);
-          const count = await client.readContract({
-            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
-            abi: PetitionRegistryABI,
-            functionName: 'petitionCount',
-          });
-  
-          const petitionCount = Number(count);
-          const fetchedPetitions = [];
-          const start = Math.max(1, petitionCount - 2); 
-  
-          // Fetch each petition
-          for (let i = petitionCount; i >= start; i--) {
-            try {
-              const petition = await client.readContract({
-                address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
-                abi: PetitionRegistryABI,
-                functionName: 'getPetition',
-                args: [BigInt(i)],
-              });
-              fetchedPetitions.push(petition);
-            } catch (error) {
-              console.error(`Error fetching petition ${i}:`, error);
-            }
+
+        const petitionCount = Number(count);
+        const fetchedPetitions = [];
+        const start = Math.max(1, petitionCount - 2);
+
+        // Fetch each petition
+        for (let i = petitionCount; i >= start; i--) {
+          try {
+            const petition = await client.readContract({
+              address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+              abi: PetitionRegistryABI,
+              functionName: 'getPetition',
+              args: [BigInt(i)],
+            });
+            fetchedPetitions.push(petition);
+          } catch (error) {
+            console.error(`Error fetching petition ${i}:`, error);
           }
-  
-          setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
-        } catch (error) {
-          console.error('Error fetching petitions:', error);
-          setPetitions(mockPetitions);
-        } finally {
-          setLoading(false);
         }
-      };
-  
-      fetchPetitions();
-    }, []);
+
+        setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
+      } catch (error) {
+        console.error('Error fetching petitions:', error);
+        setPetitions(mockPetitions);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPetitions();
+  }, []);
 
 
   return (
@@ -98,9 +98,9 @@ export default function Home() {
       <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <Image 
-              src="/logo.png" 
-              alt="Revoluzion" 
+            <Image
+              src="/logo.png"
+              alt="Revoluzion"
               width={32}
               height={32}
               className="rounded-full"
@@ -114,9 +114,9 @@ export default function Home() {
         </div>
       </Page.Header>
       <Page.Main className="bg-gray-50 pb-20">
-        <div className="px-4 py-6" style={{marginBottom: "50px"}}>
+        <div className="px-4 py-6" style={{ marginBottom: "50px" }}>
           {/* Hero Section */}
-          <div 
+          <div
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
             style={{
               background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
@@ -124,9 +124,9 @@ export default function Home() {
           >
             <div className="text-center">
               <div className="mb-4">
-                <Image 
-                  src="/logo.png" 
-                  alt="Revoluzion Logo" 
+                <Image
+                  src="/logo.png"
+                  alt="Revoluzion Logo"
                   width={64}
                   height={64}
                   className="mx-auto rounded-full"
@@ -185,24 +185,30 @@ export default function Home() {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-bold text-gray-900">Trending Now</h2>
-              <button className="text-red-600 text-sm font-semibold">View All</button>
+              <Link href="/petitions" className="text-red-600 text-sm font-semibold">View All</Link>
             </div>
-            
-            <div className="space-y-4">
+
+            {loading ? (
+              <div className="flex justify-center items-center">
+                <p>Loading petitions...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
                 <ul>
-                {mockPetitions.map((petition) => (
-                  <li key={petition.id}>
-                    <Link href={`/petition/${petition.id}`}>
-                      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-gray-200 transition-all">
-                        <h3 className="font-bold text-gray-900">{petition.title}</h3>
-                        <p className="text-sm text-gray-600">{petition.description}</p>
-                        <p className="text-sm text-gray-500 mt-2">{petition.signatures} signatures</p>
-                      </div>
+                  {petitions.map((petition) => (
+                    <li key={petition.id}>
+                      <Link href={`/petition/${petition.id}`}>
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 hover:border-gray-200 transition-all">
+                          <h3 className="font-bold text-gray-900">{petition.title}</h3>
+                          <p className="text-sm text-gray-600">{petition.description}</p>
+                          <p className="text-sm text-gray-500 mt-2">{petition.signatures} signatures</p>
+                        </div>
                       </Link>
                     </li>
                   ))}
                 </ul>
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </Page.Main>
