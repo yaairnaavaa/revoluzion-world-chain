@@ -39,32 +39,6 @@ export default function PetitionPage() {
   //console.log('Using App ID:', process.env.NEXT_PUBLIC_WLD_APP_ID);
   //console.log('🔵 Render state - petition:', !!petition, 'isSupporting:', isSupporting, 'supportStatus:', supportStatus, 'address:', !!address);
 
-  // Test World ID Router
-  const testWorldIdRouter = async () => {
-    try {
-      console.log('🔵 Testing World ID Router...');
-
-      // World ID Router address on mainnet
-      const WORLD_ID_ROUTER = '0x57b930D551e677CC36e2fA036Ae2fe8FdaE0330D';
-
-      // Just check if the contract exists by getting its bytecode
-      const bytecode = await client.getBytecode({
-        address: WORLD_ID_ROUTER as `0x${string}`
-      });
-
-      if (bytecode && bytecode !== '0x') {
-        console.log('🟢 World ID Router contract exists and has bytecode');
-        return true;
-      } else {
-        console.log('🔴 World ID Router contract not found or has no bytecode');
-        return false;
-      }
-    } catch (error) {
-      console.error('🔴 World ID Router test failed:', error);
-      return false;
-    }
-  };
-
   useEffect(() => {
     async function fetchPetition() {
       if (petitionId > 0 && PETITION_REGISTRY_ADDRESS && PETITION_REGISTRY_ADDRESS !== '0x') {
@@ -132,6 +106,7 @@ export default function PetitionPage() {
         console.log('World ID verification failed:', finalPayload);
         setSupportStatus('error');
         setErrorMessage(JSON.stringify(finalPayload));
+        console.log(errorMessage);
         alert('World ID verification failed. Please try again.');
         return;
       }
@@ -182,6 +157,7 @@ export default function PetitionPage() {
       console.error('Error supporting petition:', error);
       setSupportStatus('error');
       setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred');
+      console.log(errorMessage);
       alert('An error occurred. Please try again.');
     } finally {
       console.log('🟢 Setting isSupporting to false');
