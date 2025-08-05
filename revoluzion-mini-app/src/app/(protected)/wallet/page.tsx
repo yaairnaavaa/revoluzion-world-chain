@@ -187,7 +187,7 @@ export default function Wallet() {
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
               <h3 className="text-sm font-medium text-gray-500">RVZ Balance</h3>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{rvzBalanceDisplay}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{viemBalances.rvz}</p>
               {rvzError && <p className="text-xs text-red-500 mt-1">Error: {rvzError.message}</p>}
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
