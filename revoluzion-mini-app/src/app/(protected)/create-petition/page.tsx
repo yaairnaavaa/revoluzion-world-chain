@@ -492,7 +492,7 @@ const CreatePetitionPage = () => {
           )}
 
           {/* Debug Information - Remove in production */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          {/* <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-gray-800 mb-2">Debug Info:</h4>
             <div className="text-xs text-gray-700 space-y-1">
               <p><strong>Wagmi Address:</strong> {address || 'Not connected'}</p>
@@ -514,10 +514,10 @@ const CreatePetitionPage = () => {
                 <p className="ml-2">• Burn Amount: {contractInfo.burnAmount || 'Loading...'}</p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Token Mismatch Warning */}
-          {contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS && (
+          {/* {contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -535,7 +535,7 @@ const CreatePetitionPage = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Status Messages */}
           {submitStatus === 'success' && (
