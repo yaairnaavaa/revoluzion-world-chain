@@ -93,7 +93,7 @@ export default function Petitions() {
   return (
     <Page>
       <UserInfo />
-      <div className="flex flex-col items-center justify-center space-y-8">
+      <div className="flex flex-col items-center justify-center space-y-8 pb-[100px]">
         <h1 className="text-2xl font-bold">Petitions</h1>
         
         {loading ? (
