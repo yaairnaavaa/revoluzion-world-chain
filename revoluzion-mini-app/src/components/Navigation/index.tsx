@@ -58,7 +58,7 @@ export const Navigation = () => {
     fetchPetitionCount();
   }, []);
 
-  const petitionsLabel = petitionCount !== null ? `Petitions (${petitionCount})` : 'Petitions';
+  //const petitionsLabel = petitionCount !== null ? `Petitions (${petitionCount})` : 'Petitions';
 
   return (
     <Tabs value={getCurrentTab()}>
