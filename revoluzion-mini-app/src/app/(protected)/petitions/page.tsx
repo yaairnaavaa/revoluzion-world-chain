@@ -80,7 +80,7 @@ export default function Petitions() {
             console.error(`Error fetching petition ${i}:`, error);
           }
         }
-
+        fetchedPetitions.reverse();
         setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
       } catch (error) {
         console.error('Error fetching petitions:', error);
@@ -97,7 +97,7 @@ export default function Petitions() {
     <Page>
       <UserInfo />
       <div className="flex flex-col items-center justify-center space-y-8 pb-[100px]">
-        <h1 className="text-2xl font-bold">Petitions (${petitionCount})</h1>
+        <h1 className="text-2xl font-bold">Petitions ({petitionCount})</h1>
         
         {loading ? (
           <div className="flex justify-center items-center">

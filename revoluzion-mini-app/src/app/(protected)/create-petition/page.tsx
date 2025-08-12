@@ -17,6 +17,7 @@ import {
 import { useAccount } from 'wagmi';
 import { useSession } from 'next-auth/react';
 import { Spinner } from "flowbite-react";
+import { useRouter } from 'next/navigation';
 
 // Standard burn amount - you should fetch this from the contract
 const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
@@ -47,6 +48,7 @@ const CreatePetitionPage = () => {
     burnAmount: null,
     isInitialized: false,
   });
+  const router = useRouter();
 
   // Feel free to use your own RPC provider for better performance
   const client = createPublicClient({
@@ -131,6 +133,7 @@ const CreatePetitionPage = () => {
         });
         setTimeout(() => {
           setSubmitStatus('idle');
+          router.push('/petitions');
         }, 3000);
       }, 5000);
     }
