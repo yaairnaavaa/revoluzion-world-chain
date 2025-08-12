@@ -16,6 +16,7 @@ import {
 } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { useSession } from 'next-auth/react';
+import { Spinner } from "flowbite-react";
 
 // Standard burn amount - you should fetch this from the contract
 const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
@@ -164,7 +165,7 @@ const CreatePetitionPage = () => {
         console.log('Error payload', finalPayload);
         return false;
       }
-	    const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`
+      const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`
       console.log("app_id");
       console.log(process.env.NEXT_PUBLIC_APP_ID);
       console.log(app_id);
@@ -200,18 +201,6 @@ const CreatePetitionPage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Veririficando");
-    const isVerified = await handleVerify();
-
-  if (!isVerified) {
-      console.log("Error al verificar");
-      return;
-    }
-    console.log("Veririficación completa");
-
-    console.log('Form submitted, starting validation...');
-    console.log('Current form data:', formData);
-
     // Run validation and get the errors directly
     const newErrors: { [key: string]: string } = {};
 
@@ -243,6 +232,18 @@ const CreatePetitionPage = () => {
       setSubmitStatus('error');
       return;
     }
+
+    console.log("Veririficando");
+    const isVerified = await handleVerify();
+
+    if (!isVerified) {
+      console.log("Error al verificar");
+      return;
+    }
+    console.log("Veririficación completa");
+
+    console.log('Form submitted, starting validation...');
+    console.log('Current form data:', formData);
 
     // Check token configuration
     if (contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS) {
@@ -558,7 +559,7 @@ const CreatePetitionPage = () => {
             </div>
           )}
 
-          {submitStatus === 'error' && (
+          {/* {submitStatus === 'error' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -576,7 +577,7 @@ const CreatePetitionPage = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Form Section */}
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -685,6 +686,9 @@ const CreatePetitionPage = () => {
                 disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
                 className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
+                {(isSubmitting || submitStatus === 'pending') && (
+                  <Spinner aria-label="Loading" size="sm" />
+                )}
                 {getButtonText()}
               </button>
             </div>
