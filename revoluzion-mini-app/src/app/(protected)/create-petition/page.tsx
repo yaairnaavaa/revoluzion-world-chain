@@ -121,6 +121,7 @@ const CreatePetitionPage = () => {
     if (transactionId && !isConfirming) {
       if (isConfirmed) {
         console.log('Petition created successfully!');
+        console.log("1 xyz");
         setSubmitStatus('success');
         setIsSubmitting(false);
         // Reset form
@@ -130,13 +131,16 @@ const CreatePetitionPage = () => {
           goal: 100
         });
         setTimeout(() => {
+          console.log("2 xyz");
           setSubmitStatus('idle');
         }, 5000);
       } else if (isTransactionError) {
         console.error('Transaction failed:', transactionError);
+        console.log("3 xyz");
         setSubmitStatus('error');
         setIsSubmitting(false);
         setTimeout(() => {
+          console.log("4 xyz");
           setSubmitStatus('idle');
         }, 5000);
       }
@@ -700,17 +704,6 @@ const CreatePetitionPage = () => {
               </button>
             </div>
 
-            <div className="space-y-3">
-              <button
-                type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
-                className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={{display:"flex",justifyContent:"center"}}
-              >
-                <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{marginRight:"10px"}}/>
-                {getButtonText()}
-              </button>
-            </div>
           </form>
         </div>
       </Page.Main>
