@@ -54,18 +54,18 @@ const CreatePetitionPage = () => {
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
   });
 
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    isError: isTransactionError,
-    error: transactionError,
-  } = useWaitForTransactionReceipt({
-    client: client,
-    appConfig: {
-      app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
-    },
-    transactionId: transactionId,
-  });
+  // const {
+  //   isLoading: isConfirming,
+  //   isSuccess: isConfirmed,
+  //   isError: isTransactionError,
+  //   error: transactionError,
+  // } = useWaitForTransactionReceipt({
+  //   client: client,
+  //   appConfig: {
+  //     app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
+  //   },
+  //   transactionId: transactionId,
+  // });
 
   // Fetch contract configuration on component mount
   useEffect(() => {
@@ -118,8 +118,7 @@ const CreatePetitionPage = () => {
   }, [client]);
 
   useEffect(() => {
-    if (transactionId && !isConfirming) {
-      if (isConfirmed) {
+    if (transactionId != "error" && transactionId != "") {
         console.log('Petition created successfully!');
         console.log("1 xyz");
         setSubmitStatus('success');
@@ -134,18 +133,8 @@ const CreatePetitionPage = () => {
           console.log("2 xyz");
           setSubmitStatus('idle');
         }, 5000);
-      } else if (isTransactionError) {
-        console.error('Transaction failed:', transactionError);
-        console.log("3 xyz");
-        setSubmitStatus('error');
-        setIsSubmitting(false);
-        setTimeout(() => {
-          console.log("4 xyz");
-          setSubmitStatus('idle');
-        }, 5000);
-      }
     }
-  }, [isConfirmed, isConfirming, isTransactionError, transactionError, transactionId]);
+  }, [transactionId]);
 
   const verifyPayload: VerifyCommandInput = {
     action: 'voting-action', // This is your action ID from the Developer Portal
@@ -154,13 +143,10 @@ const CreatePetitionPage = () => {
   }
 
   const handleVerify = async (): Promise<boolean> => {
-    console.log("handleVerify 1");
     if (!MiniKit.isInstalled()) {
       console.log("MiniKit Not Ready");
       return false;
     }
-
-    console.log("handleVerify 2");
 
     try {
       const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
@@ -170,9 +156,8 @@ const CreatePetitionPage = () => {
         return false;
       }
       const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`
-      console.log("app_id");
-      console.log(process.env.NEXT_PUBLIC_APP_ID);
       console.log(app_id);
+
       const verifyResponse = await fetch('/api/verify-proof', {
         method: 'POST',
         headers: {
@@ -186,9 +171,7 @@ const CreatePetitionPage = () => {
       });
 
       const verifyResponseJson = await verifyResponse.json();
-      console.log("----1---");
       console.log(verifyResponseJson);
-      console.log("----2---");
 
       if (verifyResponseJson.status === 200) {
         console.log('Verification success!');
@@ -237,14 +220,12 @@ const CreatePetitionPage = () => {
       return;
     }
 
-    console.log("Veririficando");
     const isVerified = await handleVerify();
 
     if (!isVerified) {
-      console.log("Error al verificar");
+      console.log("Error verifying");
       return;
     }
-    console.log("Veririficación completa");
 
     console.log('Form submitted, starting validation...');
     console.log('Current form data:', formData);
@@ -359,31 +340,27 @@ const CreatePetitionPage = () => {
       console.log('MiniKit response:', finalPayload);
 
       if (finalPayload.status === 'success') {
-        console.log("1 abc");
         console.log('Transaction submitted successfully:', finalPayload.transaction_id);
         setTransactionId(finalPayload.transaction_id);
       } else {
-        console.log("2 abc");
         console.error('Transaction submission failed:', finalPayload);
         console.error('Full error details:', JSON.stringify(finalPayload, null, 2));
         if ('details' in finalPayload && finalPayload.details) {
-          console.log("3 abc");
           console.error('Simulation Details:', finalPayload.details);
         }
+        setTransactionId("error");
         setSubmitStatus('error');
         setIsSubmitting(false);
         setTimeout(() => {
-          console.log("4 abc");
           setSubmitStatus('idle');
+          setTransactionId("");
         }, 5000);
       }
     } catch (err) {
       console.error('Error creating petition:', err);
-      console.log("5 abc");
       setSubmitStatus('error');
       setIsSubmitting(false);
       setTimeout(() => {
-        console.log("6 abc");
         setSubmitStatus('idle');
       }, 5000);
     }
