@@ -101,14 +101,14 @@ const CreatePetitionPage = () => {
           isInitialized: true,
         });
 
-        console.log('Contract configuration:', {
-          contractRvzAddress,
-          configuredRvzAddress: RVZ_TOKEN_ADDRESS,
-          match: contractRvzAddress === RVZ_TOKEN_ADDRESS,
-          contractPermit2Address,
-          configuredPermit2Address: PERMIT2_ADDRESS,
-          contractBurnAmount: (contractBurnAmount as bigint).toString(),
-        });
+        // console.log('Contract configuration:', {
+        //   contractRvzAddress,
+        //   configuredRvzAddress: RVZ_TOKEN_ADDRESS,
+        //   match: contractRvzAddress === RVZ_TOKEN_ADDRESS,
+        //   contractPermit2Address,
+        //   configuredPermit2Address: PERMIT2_ADDRESS,
+        //   contractBurnAmount: (contractBurnAmount as bigint).toString(),
+        // });
       } catch (error) {
         console.error('Error fetching contract info:', error);
       }
@@ -355,25 +355,31 @@ const CreatePetitionPage = () => {
       console.log('MiniKit response:', finalPayload);
 
       if (finalPayload.status === 'success') {
+        console.log("1 abc");
         console.log('Transaction submitted successfully:', finalPayload.transaction_id);
         setTransactionId(finalPayload.transaction_id);
       } else {
+        console.log("2 abc");
         console.error('Transaction submission failed:', finalPayload);
         console.error('Full error details:', JSON.stringify(finalPayload, null, 2));
         if ('details' in finalPayload && finalPayload.details) {
+          console.log("3 abc");
           console.error('Simulation Details:', finalPayload.details);
         }
         setSubmitStatus('error');
         setIsSubmitting(false);
         setTimeout(() => {
+          console.log("4 abc");
           setSubmitStatus('idle');
         }, 5000);
       }
     } catch (err) {
       console.error('Error creating petition:', err);
+      console.log("5 abc");
       setSubmitStatus('error');
       setIsSubmitting(false);
       setTimeout(() => {
+        console.log("6 abc");
         setSubmitStatus('idle');
       }, 5000);
     }
@@ -685,10 +691,23 @@ const CreatePetitionPage = () => {
                 type="submit"
                 disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
                 className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{display:"flex",justifyContent:"center"}}
               >
                 {(isSubmitting || submitStatus === 'pending') && (
-                  <Spinner aria-label="Loading" size="sm" />
+                  <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{marginRight:"10px"}}/>
                 )}
+                {getButtonText()}
+              </button>
+            </div>
+
+            <div className="space-y-3">
+              <button
+                type="submit"
+                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
+                className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                style={{display:"flex",justifyContent:"center"}}
+              >
+                <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{marginRight:"10px"}}/>
                 {getButtonText()}
               </button>
             </div>
