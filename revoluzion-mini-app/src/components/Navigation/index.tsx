@@ -66,7 +66,7 @@ export const Navigation = () => {
         <TabItem value="home" icon={<Home />} label="Home" />
       </Link>
       <Link href="/petitions" passHref>
-        <TabItem value="petitions" icon={<Page />} label={petitionsLabel} />
+        <TabItem value="petitions" icon={<Page />} label="Petitions" />
       </Link>
       <Link href="/wallet" passHref>
         <TabItem value="wallet" icon={<Bank />} label="Wallet" />

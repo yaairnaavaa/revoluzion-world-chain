@@ -35,11 +35,13 @@ const mockPetitions = [
 export default function Petitions() {
   const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [petitionCount, setPetitionCount] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPetitions = async () => {
       if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
         console.warn('PetitionRegistry contract address not set, using mock data.');
+        setPetitionCount(0); // Set a default or placeholder
         setPetitions(mockPetitions);
         setLoading(false);
         return;
@@ -61,6 +63,7 @@ export default function Petitions() {
         });
 
         const petitionCount = Number(count);
+        setPetitionCount(petitionCount);
         const fetchedPetitions = [];
 
         // Fetch each petition
@@ -94,7 +97,7 @@ export default function Petitions() {
     <Page>
       <UserInfo />
       <div className="flex flex-col items-center justify-center space-y-8 pb-[100px]">
-        <h1 className="text-2xl font-bold">Petitions</h1>
+        <h1 className="text-2xl font-bold">Petitions (${petitionCount})</h1>
         
         {loading ? (
           <div className="flex justify-center items-center">
