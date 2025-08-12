@@ -5,7 +5,7 @@ import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
 import { useState, useEffect } from 'react';
 import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
-import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
+//import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
 import { createPublicClient, http } from 'viem';
 import { worldchain } from 'viem/chains';
 import Image from 'next/image';
