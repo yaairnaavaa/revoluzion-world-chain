@@ -79,7 +79,6 @@ export default function Home() {
             console.error(`Error fetching petition ${i}:`, error);
           }
         }
-
         setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
       } catch (error) {
         console.error('Error fetching petitions:', error);
@@ -175,9 +174,11 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-              <button className="w-full bg-gray-900 text-white font-semibold py-3 px-6 rounded-xl hover:bg-gray-800 transition-colors duration-200 shadow-sm">
-                Browse Petitions
-              </button>
+              <Link href={`/petitions/`}>
+                <button className="w-full bg-gray-900 text-white font-semibold py-3 px-6 rounded-xl hover:bg-gray-800 transition-colors duration-200 shadow-sm">
+                  Browse Petitions
+                </button>
+              </Link>
             </div>
           </div>
 

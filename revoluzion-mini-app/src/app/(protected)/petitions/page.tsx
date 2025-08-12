@@ -111,12 +111,12 @@ export default function Petitions() {
                   {petition.description}
                 </p>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    {petition.supportCount || petition.signatures} supporters
+                  <span className="text-sm text-gray-800 font-semibold">
+                    {petition.supportCount || petition.signatures} Supporters
                   </span>
                   <Link 
                     href={`/petition/${petition.id.toString()}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-blue-600 hover:text-blue-800 font-medium bg-gray-900 text-white font-semibold py-2 px-2 rounded-xl hover:bg-gray-800 transition-colors duration-200 shadow-sm"  
                   >
                     View Details
                   </Link>
