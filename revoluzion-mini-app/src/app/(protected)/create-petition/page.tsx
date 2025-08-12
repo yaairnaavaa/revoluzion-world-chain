@@ -131,10 +131,21 @@ const CreatePetitionPage = () => {
           description: '',
           goal: 100
         });
-        setTimeout(() => {
+        setTimeout(async () => {
           setSubmitStatus('idle');
-          router.push('/petitions');
-        }, 3000);
+
+          const client = createPublicClient({
+            chain: worldchain,
+            transport: http(),
+          });
+
+          const lastId = await client.readContract({
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'getLastPetitionId',
+          });
+          router.push('/petition/'+lastId);
+        }, 1000);
       }, 5000);
     }
   }, [transactionId]);
