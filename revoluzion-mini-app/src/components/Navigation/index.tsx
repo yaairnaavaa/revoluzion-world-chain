@@ -4,11 +4,11 @@ import { TabItem, Tabs } from '@worldcoin/mini-apps-ui-kit-react';
 import { Bank, Home, User, Page } from 'iconoir-react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { createPublicClient, http } from 'viem';
-import { worldchain } from 'viem/chains';
-import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
-import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
+// import { useEffect, useState } from 'react';
+// import { createPublicClient, http } from 'viem';
+// import { worldchain } from 'viem/chains';
+// import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+// import { PETITION_REGISTRY_ADDRESS } from '@/lib/contracts';
 
 /**
  * This component uses the UI Kit to navigate between pages
