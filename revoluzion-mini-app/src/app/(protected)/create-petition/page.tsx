@@ -3,6 +3,7 @@
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+import RVZTokenABI from '@/abi/RVZToken.json';
 import { useState, useEffect } from 'react';
 import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 //import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
@@ -28,6 +29,7 @@ const CreatePetitionPage = () => {
 
   // Use wagmi address first, fallback to session address
   const walletAddress = address || session?.user?.walletAddress;
+  const [rvzBalance, setRvzBalance] = useState<unknown | null>(0);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -103,6 +105,15 @@ const CreatePetitionPage = () => {
           isInitialized: true,
         });
 
+        const balance = await client.readContract({
+          address: RVZ_TOKEN_ADDRESS,
+          abi: RVZTokenABI,
+          functionName: 'balanceOf',
+          args: [walletAddress as `0x${string}`],
+        });
+        setRvzBalance(balance);
+        console.log("balance: "+balance);
+        console.log("rvzBalance: "+rvzBalance)
         // console.log('Contract configuration:', {
         //   contractRvzAddress,
         //   configuredRvzAddress: RVZ_TOKEN_ADDRESS,
@@ -144,7 +155,7 @@ const CreatePetitionPage = () => {
             abi: PetitionRegistryABI,
             functionName: 'getLastPetitionId',
           });
-          router.push('/petition/'+lastId);
+          router.push('/petition/' + lastId);
         }, 1000);
       }, 5000);
     }
