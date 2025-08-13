@@ -719,7 +719,7 @@ const CreatePetitionPage = () => {
                 <div className="space-y-3">
                   <button
                     disabled={true}
-                    className={`'opacity-50 cursor-not-allowed'`}
+                    className={`${getButtonClass()} ${'opacity-50 cursor-not-allowed'}`}
                     style={{ display: "flex", justifyContent: "center" }}
                   >
                     Insufficient RVZ Token balance
