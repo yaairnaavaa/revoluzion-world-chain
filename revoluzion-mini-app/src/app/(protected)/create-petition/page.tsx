@@ -700,6 +700,7 @@ const CreatePetitionPage = () => {
             </div>
 
             {/* Submit Button */}
+            <label>{rvzBalance}</label>
             {
               rvzBalance > 10 ?
                 <div className="space-y-3">
