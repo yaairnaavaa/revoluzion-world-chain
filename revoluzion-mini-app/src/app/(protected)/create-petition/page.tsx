@@ -7,7 +7,7 @@ import RVZTokenABI from '@/abi/RVZToken.json';
 import { useState, useEffect } from 'react';
 import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
 //import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, formatUnits } from 'viem';
 import { worldchain } from 'viem/chains';
 import Image from 'next/image';
 import {
@@ -29,7 +29,7 @@ const CreatePetitionPage = () => {
 
   // Use wagmi address first, fallback to session address
   const walletAddress = address || session?.user?.walletAddress;
-  const [rvzBalance, setRvzBalance] = useState<unknown | null>(0);
+  const [rvzBalance, setRvzBalance] = useState<number>(0);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -123,15 +123,17 @@ const CreatePetitionPage = () => {
 
   useEffect(() => {
     const getBalanceRVZ = async () => {
-        const balance = await client.readContract({
-          address: RVZ_TOKEN_ADDRESS,
-          abi: RVZTokenABI,
-          functionName: 'balanceOf',
-          args: [walletAddress as `0x${string}`],
-        });
-        setRvzBalance(balance);
-        console.log("balance: " + balance);
-        console.log("rvzBalance: " + rvzBalance)
+      const balance = await client.readContract({
+        address: RVZ_TOKEN_ADDRESS,
+        abi: RVZTokenABI,
+        functionName: 'balanceOf',
+        args: [walletAddress as `0x${string}`],
+      });
+      const rawBalance = balance as bigint;
+      const formattedBalance = Number(formatUnits(rawBalance, 18));
+      setRvzBalance(formattedBalance);
+      console.log("balance: " + formattedBalance);
+      console.log("rvzBalance: " + rvzBalance)
     };
     getBalanceRVZ();
   }, [rvzBalance]);
@@ -698,20 +700,32 @@ const CreatePetitionPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="space-y-3">
-              <button
-                type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid() || rvzBalance as number > 10}
-                className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={{ display: "flex", justifyContent: "center" }}
-              >
-                {(isSubmitting || submitStatus === 'pending') && (
-                  <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{ marginRight: "10px" }} />
-                )}
-                { rvzBalance as number > 10 ? getButtonText() : "Insufficient RVZ Token balance"}
-              </button>
-            </div>
-
+            {
+              rvzBalance > 10 ?
+                <div className="space-y-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
+                    className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{ display: "flex", justifyContent: "center" }}
+                  >
+                    {(isSubmitting || submitStatus === 'pending') && (
+                      <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{ marginRight: "10px" }} />
+                    )}
+                    {getButtonText()}
+                  </button>
+                </div> :
+                <div className="space-y-3">
+                  <button
+                    type="submit"
+                    disabled={true}
+                    className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{ display: "flex", justifyContent: "center" }}
+                  >
+                    Insufficient RVZ Token balance
+                  </button>
+                </div>
+            }
           </form>
         </div>
       </Page.Main>
