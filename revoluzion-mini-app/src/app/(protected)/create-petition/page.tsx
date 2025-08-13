@@ -105,15 +105,6 @@ const CreatePetitionPage = () => {
           isInitialized: true,
         });
 
-        const balance = await client.readContract({
-          address: RVZ_TOKEN_ADDRESS,
-          abi: RVZTokenABI,
-          functionName: 'balanceOf',
-          args: [walletAddress as `0x${string}`],
-        });
-        setRvzBalance(balance);
-        console.log("balance: "+balance);
-        console.log("rvzBalance: "+rvzBalance)
         // console.log('Contract configuration:', {
         //   contractRvzAddress,
         //   configuredRvzAddress: RVZ_TOKEN_ADDRESS,
@@ -129,6 +120,21 @@ const CreatePetitionPage = () => {
 
     fetchContractInfo();
   }, [client]);
+
+  useEffect(() => {
+    const getBalanceRVZ = async () => {
+        const balance = await client.readContract({
+          address: RVZ_TOKEN_ADDRESS,
+          abi: RVZTokenABI,
+          functionName: 'balanceOf',
+          args: [walletAddress as `0x${string}`],
+        });
+        setRvzBalance(balance);
+        console.log("balance: " + balance);
+        console.log("rvzBalance: " + rvzBalance)
+    };
+    getBalanceRVZ();
+  }, [rvzBalance]);
 
   useEffect(() => {
     if (transactionId != "error" && transactionId != "") {
@@ -695,14 +701,14 @@ const CreatePetitionPage = () => {
             <div className="space-y-3">
               <button
                 type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
+                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid() || rvzBalance as number > 10}
                 className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
                 style={{ display: "flex", justifyContent: "center" }}
               >
                 {(isSubmitting || submitStatus === 'pending') && (
                   <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{ marginRight: "10px" }} />
                 )}
-                {getButtonText()}
+                { rvzBalance as number > 10 ? getButtonText() : "Insufficient RVZ Token balance"}
               </button>
             </div>
 
