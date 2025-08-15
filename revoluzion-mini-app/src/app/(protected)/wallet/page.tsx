@@ -115,6 +115,7 @@ export default function Wallet() {
       rvzBalanceData: rvzBalanceData,
       wldBalanceData: wldBalanceData,
     });
+    console.log(debugInfo);
   }, [address, session, rvzBalanceData, wldBalanceData, rvzError, wldError, walletAddress]);
 
   const rvzBalanceDisplay = isRvzBalanceLoading
