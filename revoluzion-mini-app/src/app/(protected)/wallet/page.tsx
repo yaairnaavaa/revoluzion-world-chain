@@ -198,7 +198,7 @@ export default function Wallet() {
           </div>
 
           {/* Debug Information - Remove in production */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-yellow-800 mb-2">Debug Info:</h4>
             <div className="text-xs text-yellow-700 space-y-1">
               <p><strong>Wagmi Address:</strong> {debugInfo.wagmiAddress || 'Not connected'}</p>
@@ -211,7 +211,7 @@ export default function Wallet() {
               {debugInfo.rvzError && <p><strong>RVZ Error:</strong> {debugInfo.rvzError}</p>}
               {debugInfo.wldError && <p><strong>WLD Error:</strong> {debugInfo.wldError}</p>}
             </div>
-          </div>
+          </div> */}
 
           <div>
             <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Activity (Mock)</h3>

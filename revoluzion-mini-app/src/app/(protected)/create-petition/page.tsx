@@ -671,17 +671,14 @@ const CreatePetitionPage = () => {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-amber-800">
-                    RVZ Token Burn Required
+                    Creating a petition requires burning 10 RVZ token.
                   </h3>
-                  <div className="mt-1 text-sm text-amber-700">
-                    Creating a petition requires burning 1 RVZ token via Permit2 signature. This prevents spam and ensures commitment to your cause. The transaction is processed securely through World Chain&apos;s signature system.
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* Permit2 Technical Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            {/* <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -697,7 +694,7 @@ const CreatePetitionPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Submit Button */}
             {
