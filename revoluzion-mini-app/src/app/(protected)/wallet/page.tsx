@@ -115,6 +115,7 @@ export default function Wallet() {
       rvzBalanceData: rvzBalanceData,
       wldBalanceData: wldBalanceData,
     });
+    console.log(debugInfo);
   }, [address, session, rvzBalanceData, wldBalanceData, rvzError, wldError, walletAddress]);
 
   const rvzBalanceDisplay = isRvzBalanceLoading
@@ -166,7 +167,7 @@ export default function Wallet() {
       </Page.Header>
 
       <Page.Main className="bg-gray-50">
-        <div className="px-4 py-6">
+        <div className="px-4 py-6" style={{marginBottom: "50px"}}>
           <div 
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
             style={{
@@ -187,7 +188,7 @@ export default function Wallet() {
           <div className="grid grid-cols-2 gap-4 mb-8">
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
               <h3 className="text-sm font-medium text-gray-500">RVZ Balance</h3>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{rvzBalanceDisplay}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{viemBalances.rvz}</p>
               {rvzError && <p className="text-xs text-red-500 mt-1">Error: {rvzError.message}</p>}
             </div>
             <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 text-center">
@@ -198,7 +199,7 @@ export default function Wallet() {
           </div>
 
           {/* Debug Information - Remove in production */}
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
+          {/* <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-yellow-800 mb-2">Debug Info:</h4>
             <div className="text-xs text-yellow-700 space-y-1">
               <p><strong>Wagmi Address:</strong> {debugInfo.wagmiAddress || 'Not connected'}</p>
@@ -211,7 +212,7 @@ export default function Wallet() {
               {debugInfo.rvzError && <p><strong>RVZ Error:</strong> {debugInfo.rvzError}</p>}
               {debugInfo.wldError && <p><strong>WLD Error:</strong> {debugInfo.wldError}</p>}
             </div>
-          </div>
+          </div> */}
 
           <div>
             <h3 className="text-lg font-bold text-gray-900 mb-4">Recent Activity (Mock)</h3>

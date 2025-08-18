@@ -3,10 +3,11 @@
 import { Page } from '@/components/PageLayout';
 import { UserInfo } from '@/components/UserInfo';
 import PetitionRegistryABI from '@/abi/PetitionRegistry.json';
+import RVZTokenABI from '@/abi/RVZToken.json';
 import { useState, useEffect } from 'react';
-import { MiniKit } from '@worldcoin/minikit-js';
-import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
-import { createPublicClient, http } from 'viem';
+import { MiniKit, VerifyCommandInput, VerificationLevel, ISuccessResult } from '@worldcoin/minikit-js'
+//import { useWaitForTransactionReceipt } from '@worldcoin/minikit-react';
+import { createPublicClient, http, formatUnits } from 'viem';
 import { worldchain } from 'viem/chains';
 import Image from 'next/image';
 import {
@@ -16,6 +17,8 @@ import {
 } from '@/lib/contracts';
 import { useAccount } from 'wagmi';
 import { useSession } from 'next-auth/react';
+import { Spinner } from "flowbite-react";
+import { useRouter } from 'next/navigation';
 
 // Standard burn amount - you should fetch this from the contract
 const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
@@ -23,9 +26,10 @@ const BURN_AMOUNT = '1000000000000000000'; // 1 RVZ token (18 decimals)
 const CreatePetitionPage = () => {
   const { address } = useAccount();
   const { data: session } = useSession();
-  
+
   // Use wagmi address first, fallback to session address
   const walletAddress = address || session?.user?.walletAddress;
+  const [rvzBalance, setRvzBalance] = useState<number>(0);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -46,6 +50,7 @@ const CreatePetitionPage = () => {
     burnAmount: null,
     isInitialized: false,
   });
+  const router = useRouter();
 
   // Feel free to use your own RPC provider for better performance
   const client = createPublicClient({
@@ -53,18 +58,18 @@ const CreatePetitionPage = () => {
     transport: http('https://worldchain-mainnet.g.alchemy.com/public'),
   });
 
-  const {
-    isLoading: isConfirming,
-    isSuccess: isConfirmed,
-    isError: isTransactionError,
-    error: transactionError,
-  } = useWaitForTransactionReceipt({
-    client: client,
-    appConfig: {
-      app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
-    },
-    transactionId: transactionId,
-  });
+  // const {
+  //   isLoading: isConfirming,
+  //   isSuccess: isConfirmed,
+  //   isError: isTransactionError,
+  //   error: transactionError,
+  // } = useWaitForTransactionReceipt({
+  //   client: client,
+  //   appConfig: {
+  //     app_id: process.env.NEXT_PUBLIC_WLD_APP_ID as `app_${string}`,
+  //   },
+  //   transactionId: transactionId,
+  // });
 
   // Fetch contract configuration on component mount
   useEffect(() => {
@@ -100,14 +105,14 @@ const CreatePetitionPage = () => {
           isInitialized: true,
         });
 
-        console.log('Contract configuration:', {
-          contractRvzAddress,
-          configuredRvzAddress: RVZ_TOKEN_ADDRESS,
-          match: contractRvzAddress === RVZ_TOKEN_ADDRESS,
-          contractPermit2Address,
-          configuredPermit2Address: PERMIT2_ADDRESS,
-          contractBurnAmount: (contractBurnAmount as bigint).toString(),
-        });
+        // console.log('Contract configuration:', {
+        //   contractRvzAddress,
+        //   configuredRvzAddress: RVZ_TOKEN_ADDRESS,
+        //   match: contractRvzAddress === RVZ_TOKEN_ADDRESS,
+        //   contractPermit2Address,
+        //   configuredPermit2Address: PERMIT2_ADDRESS,
+        //   contractBurnAmount: (contractBurnAmount as bigint).toString(),
+        // });
       } catch (error) {
         console.error('Error fetching contract info:', error);
       }
@@ -117,8 +122,25 @@ const CreatePetitionPage = () => {
   }, [client]);
 
   useEffect(() => {
-    if (transactionId && !isConfirming) {
-      if (isConfirmed) {
+    const getBalanceRVZ = async () => {
+      const balance = await client.readContract({
+        address: RVZ_TOKEN_ADDRESS,
+        abi: RVZTokenABI,
+        functionName: 'balanceOf',
+        args: [walletAddress as `0x${string}`],
+      });
+      const rawBalance = balance as bigint;
+      const formattedBalance = Number(formatUnits(rawBalance, 18));
+      setRvzBalance(formattedBalance);
+      console.log("balance: " + formattedBalance);
+      console.log("rvzBalance: " + rvzBalance)
+    };
+    getBalanceRVZ();
+  }, [rvzBalance]);
+
+  useEffect(() => {
+    if (transactionId != "error" && transactionId != "") {
+      setTimeout(() => {
         console.log('Petition created successfully!');
         setSubmitStatus('success');
         setIsSubmitting(false);
@@ -128,47 +150,98 @@ const CreatePetitionPage = () => {
           description: '',
           goal: 100
         });
-        setTimeout(() => {
+        setTimeout(async () => {
           setSubmitStatus('idle');
-        }, 5000);
-      } else if (isTransactionError) {
-        console.error('Transaction failed:', transactionError);
-        setSubmitStatus('error');
-        setIsSubmitting(false);
-        setTimeout(() => {
-          setSubmitStatus('idle');
-        }, 5000);
-      }
+
+          const client = createPublicClient({
+            chain: worldchain,
+            transport: http(),
+          });
+
+          const lastId = await client.readContract({
+            address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
+            abi: PetitionRegistryABI,
+            functionName: 'getLastPetitionId',
+          });
+          router.push('/petition/' + lastId);
+        }, 1000);
+      }, 5000);
     }
-  }, [isConfirmed, isConfirming, isTransactionError, transactionError, transactionId]);
+  }, [transactionId]);
+
+  const verifyPayload: VerifyCommandInput = {
+    action: 'voting-action', // This is your action ID from the Developer Portal
+    signal: '0x12312', // Optional additional data
+    verification_level: VerificationLevel.Orb, // Orb | Device
+  }
+
+  const handleVerify = async (): Promise<boolean> => {
+    if (!MiniKit.isInstalled()) {
+      console.log("MiniKit Not Ready");
+      return false;
+    }
+
+    try {
+      const { finalPayload } = await MiniKit.commandsAsync.verify(verifyPayload);
+
+      if (finalPayload.status === 'error') {
+        console.log('Error payload', finalPayload);
+        return false;
+      }
+      const app_id = process.env.NEXT_PUBLIC_APP_ID as `app_${string}`
+      console.log(app_id);
+
+      const verifyResponse = await fetch('/api/verify-proof', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          payload: finalPayload as ISuccessResult,
+          action: 'voting-action',
+          signal: '0x12312',
+        }),
+      });
+
+      const verifyResponseJson = await verifyResponse.json();
+      console.log(verifyResponseJson);
+
+      if (verifyResponseJson.status === 200) {
+        console.log('Verification success!');
+        return true;
+      }
+
+      return false;
+    } catch (err) {
+      console.error('Verification error:', err);
+      return false;
+    }
+  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    console.log('Form submitted, starting validation...');
-    console.log('Current form data:', formData);
-    
     // Run validation and get the errors directly
     const newErrors: { [key: string]: string } = {};
-    
+
     if (!formData.title.trim()) {
       newErrors.title = 'Title is required';
     } else if (formData.title.length < 10) {
       newErrors.title = 'Title must be at least 10 characters long';
     }
-    
+
     if (!formData.description.trim()) {
       newErrors.description = 'Description is required';
     } else if (formData.description.length < 50) {
       newErrors.description = 'Description must be at least 50 characters long';
     }
-    
+
     if (formData.goal < 1) {
       newErrors.goal = 'Goal must be at least 1 supporter';
     }
-    
+
     setErrors(newErrors);
-    
+
     if (Object.keys(newErrors).length > 0) {
       console.error('Form validation failed:', newErrors);
       return;
@@ -179,6 +252,16 @@ const CreatePetitionPage = () => {
       setSubmitStatus('error');
       return;
     }
+
+    const isVerified = await handleVerify();
+
+    if (!isVerified) {
+      console.log("Error verifying");
+      return;
+    }
+
+    console.log('Form submitted, starting validation...');
+    console.log('Current form data:', formData);
 
     // Check token configuration
     if (contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS) {
@@ -197,9 +280,9 @@ const CreatePetitionPage = () => {
         address: RVZ_TOKEN_ADDRESS as `0x${string}`,
         abi: [
           {
-            "inputs": [{"internalType": "address", "name": "account", "type": "address"}],
+            "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
             "name": "balanceOf",
-            "outputs": [{"internalType": "uint256", "name": "", "type": "uint256"}],
+            "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
             "stateMutability": "view",
             "type": "function"
           }
@@ -236,7 +319,7 @@ const CreatePetitionPage = () => {
       const nonce = Date.now(); // Use timestamp as nonce for simplicity
 
       // Use the contract's burn amount instead of hardcoded value
-      
+
       console.log('Creating petition with Permit2:', {
         title: formData.title,
         description: formData.description,
@@ -298,10 +381,12 @@ const CreatePetitionPage = () => {
         if ('details' in finalPayload && finalPayload.details) {
           console.error('Simulation Details:', finalPayload.details);
         }
+        setTransactionId("error");
         setSubmitStatus('error');
         setIsSubmitting(false);
         setTimeout(() => {
           setSubmitStatus('idle');
+          setTransactionId("");
         }, 5000);
       }
     } catch (err) {
@@ -319,7 +404,7 @@ const CreatePetitionPage = () => {
       ...prev,
       [field]: value
     }));
-    
+
     // Clear error when user starts typing
     if (errors[field]) {
       setErrors(prev => ({
@@ -327,6 +412,10 @@ const CreatePetitionPage = () => {
         [field]: ''
       }));
     }
+  };
+
+  const isFormValid = () => {
+    return formData.title.trim() !== '' && formData.description.trim() !== '';
   };
 
   const getButtonText = () => {
@@ -360,7 +449,7 @@ const CreatePetitionPage = () => {
       <Page.Header className="p-0 bg-white border-b border-gray-200">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-2">
-            <button 
+            <button
               className="text-red-600 font-semibold"
               onClick={() => window.history.back()}
             >
@@ -374,9 +463,9 @@ const CreatePetitionPage = () => {
         </div>
       </Page.Header>
       <Page.Main className="bg-gray-50 pb-20">
-        <div className="px-4 py-6">
+        <div className="px-4 py-6" style={{ marginBottom: "60px" }}>
           {/* Hero Section */}
-          <div 
+          <div
             className="rounded-2xl p-6 mb-8 text-white shadow-lg"
             style={{
               background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'
@@ -384,9 +473,9 @@ const CreatePetitionPage = () => {
           >
             <div className="text-center">
               <div className="mb-4">
-                <Image 
-                  src="/logo.png" 
-                  alt="Revoluzion Logo" 
+                <Image
+                  src="/logo.png"
+                  alt="Revoluzion Logo"
                   className="mx-auto h-12 w-12 rounded-full"
                   width={48}
                   height={48}
@@ -424,21 +513,21 @@ const CreatePetitionPage = () => {
           )}
 
           {/* Debug Information - Remove in production */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+          {/* <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
             <h4 className="font-semibold text-gray-800 mb-2">Debug Info:</h4>
             <div className="text-xs text-gray-700 space-y-1">
               <p><strong>Wagmi Address:</strong> {address || 'Not connected'}</p>
               <p><strong>Session Address:</strong> {session?.user?.walletAddress || 'Not available'}</p>
               <p><strong>Combined Address:</strong> {walletAddress || 'Not available'}</p>
               <p><strong>Can Create Petition:</strong> {walletAddress ? 'Yes' : 'No'}</p>
-              
+
               <div className="mt-3 pt-2 border-t border-gray-300">
                 <p><strong>Contract Configuration:</strong></p>
                 <p className="ml-2">• Contract RVZ Token: {contractInfo.rvzTokenAddress || 'Loading...'}</p>
                 <p className="ml-2">• Our RVZ Token: {RVZ_TOKEN_ADDRESS}</p>
                 <p className="ml-2">• Tokens Match: {
-                  contractInfo.isInitialized 
-                    ? (contractInfo.rvzTokenAddress === RVZ_TOKEN_ADDRESS ? '✅ Yes' : '❌ No') 
+                  contractInfo.isInitialized
+                    ? (contractInfo.rvzTokenAddress === RVZ_TOKEN_ADDRESS ? '✅ Yes' : '❌ No')
                     : 'Loading...'
                 }</p>
                 <p className="ml-2">• Contract Permit2: {contractInfo.permit2Address || 'Loading...'}</p>
@@ -446,10 +535,10 @@ const CreatePetitionPage = () => {
                 <p className="ml-2">• Burn Amount: {contractInfo.burnAmount || 'Loading...'}</p>
               </div>
             </div>
-          </div>
+          </div> */}
 
           {/* Token Mismatch Warning */}
-          {contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS && (
+          {/* {contractInfo.isInitialized && contractInfo.rvzTokenAddress !== RVZ_TOKEN_ADDRESS && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -467,7 +556,7 @@ const CreatePetitionPage = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Status Messages */}
           {submitStatus === 'success' && (
@@ -490,7 +579,7 @@ const CreatePetitionPage = () => {
             </div>
           )}
 
-          {submitStatus === 'error' && (
+          {/* {submitStatus === 'error' && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -508,7 +597,7 @@ const CreatePetitionPage = () => {
                 </div>
               </div>
             </div>
-          )}
+          )} */}
 
           {/* Form Section */}
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -522,9 +611,8 @@ const CreatePetitionPage = () => {
                 value={formData.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 placeholder="What change do you want to see?"
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${
-                  errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none ${errors.title ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                  }`}
                 maxLength={100}
               />
               {errors.title && (
@@ -542,9 +630,8 @@ const CreatePetitionPage = () => {
                 value={formData.description}
                 onChange={(e) => handleInputChange('description', e.target.value)}
                 placeholder="Explain why this petition matters. What's the problem? What solution are you proposing? Why should people care?"
-                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none ${
-                  errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
-                }`}
+                className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none h-32 resize-none ${errors.description ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                  }`}
                 maxLength={1000}
               />
               {errors.description && (
@@ -558,7 +645,7 @@ const CreatePetitionPage = () => {
               <label className="block text-sm font-semibold text-gray-900 mb-2">
                 Support Goal *
               </label>
-              <select 
+              <select
                 value={formData.goal}
                 onChange={(e) => handleInputChange('goal', parseInt(e.target.value))}
                 className="w-full p-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none"
@@ -584,17 +671,14 @@ const CreatePetitionPage = () => {
                 </div>
                 <div className="ml-3">
                   <h3 className="text-sm font-medium text-amber-800">
-                    RVZ Token Burn Required
+                    Creating a petition requires burning 10 RVZ token.
                   </h3>
-                  <div className="mt-1 text-sm text-amber-700">
-                    Creating a petition requires burning 1 RVZ token via Permit2 signature. This prevents spam and ensures commitment to your cause. The transaction is processed securely through World Chain&apos;s signature system.
-                  </div>
                 </div>
               </div>
             </div>
 
             {/* Permit2 Technical Info */}
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            {/* <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
                   <svg className="h-5 w-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -610,18 +694,34 @@ const CreatePetitionPage = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div> */}
 
             {/* Submit Button */}
-            <div className="space-y-3">
-              <button
-                type="submit"
-                disabled={isSubmitting || submitStatus === 'pending' || !walletAddress}
-                className={getButtonClass()}
-              >
-                {getButtonText()}
-              </button>
-            </div>
+            {
+              rvzBalance >= 10 ?
+                <div className="space-y-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || submitStatus === 'pending' || !walletAddress || !isFormValid()}
+                    className={`${getButtonClass()} ${!isFormValid() ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    style={{ display: "flex", justifyContent: "center" }}
+                  >
+                    {(isSubmitting || submitStatus === 'pending') && (
+                      <Spinner color="failure" aria-label="Loading" size="md" className="text-gray-200 fill-blue-600" style={{ marginRight: "10px" }} />
+                    )}
+                    {getButtonText()}
+                  </button>
+                </div> :
+                <div className="space-y-3">
+                  <button
+                    disabled={true}
+                    className={`${getButtonClass()} ${'opacity-50 cursor-not-allowed'}`}
+                    style={{ display: "flex", justifyContent: "center" }}
+                  >
+                    Insufficient RVZ Token balance
+                  </button>
+                </div>
+            }
           </form>
         </div>
       </Page.Main>

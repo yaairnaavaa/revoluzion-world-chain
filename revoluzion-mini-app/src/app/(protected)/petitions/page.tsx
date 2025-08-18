@@ -35,11 +35,13 @@ const mockPetitions = [
 export default function Petitions() {
   const [petitions, setPetitions] = useState<Petition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [petitionCount, setPetitionCount] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchPetitions = async () => {
       if (!PETITION_REGISTRY_ADDRESS || PETITION_REGISTRY_ADDRESS === '0x') {
         console.warn('PetitionRegistry contract address not set, using mock data.');
+        setPetitionCount(0); // Set a default or placeholder
         setPetitions(mockPetitions);
         setLoading(false);
         return;
@@ -52,6 +54,8 @@ export default function Petitions() {
 
       try {
         // Get petition count first
+        console.log("PETITION_REGISTRY_ADDRESS");
+        console.log(PETITION_REGISTRY_ADDRESS);
         const count = await client.readContract({
           address: PETITION_REGISTRY_ADDRESS as `0x${string}`,
           abi: PetitionRegistryABI,
@@ -59,6 +63,7 @@ export default function Petitions() {
         });
 
         const petitionCount = Number(count);
+        setPetitionCount(petitionCount);
         const fetchedPetitions = [];
 
         // Fetch each petition
@@ -75,7 +80,7 @@ export default function Petitions() {
             console.error(`Error fetching petition ${i}:`, error);
           }
         }
-
+        fetchedPetitions.reverse();
         setPetitions(fetchedPetitions.length > 0 ? fetchedPetitions as Petition[] : mockPetitions);
       } catch (error) {
         console.error('Error fetching petitions:', error);
@@ -91,9 +96,18 @@ export default function Petitions() {
   return (
     <Page>
       <UserInfo />
-      <div className="flex flex-col items-center justify-center space-y-8">
-        <h1 className="text-2xl font-bold">Petitions</h1>
-        
+      <div className="flex flex-col items-center justify-center space-y-8 pb-[100px]">
+        <div style={{ width: "100%", position: "sticky", top: "0", textAlign: "center", background: "white" }}>
+          <h1 className="text-2xl font-bold mt-2">Petitions ({petitionCount})</h1>
+          <div className="text-center mt-2 mb-2" style={{ display: "flex", justifyContent: "center" }}>
+            <Link
+              href="/create-petition"
+              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            >
+              New Petition
+            </Link>
+          </div>
+        </div>
         {loading ? (
           <div className="flex justify-center items-center">
             <p>Loading petitions...</p>
@@ -109,27 +123,18 @@ export default function Petitions() {
                   {petition.description}
                 </p>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    {petition.supportCount || petition.signatures} supporters
+                  <span className="text-sm text-gray-800 font-semibold">
+                    {petition.supportCount || petition.signatures} Supporters
                   </span>
-                  <Link 
+                  <Link
                     href={`/petition/${petition.id.toString()}`}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
+                    className="text-blue-600 hover:text-blue-800 font-medium bg-gray-900 text-white font-semibold py-2 px-2 rounded-xl hover:bg-gray-800 transition-colors duration-200 shadow-sm"
                   >
                     View Details
                   </Link>
                 </div>
               </div>
             ))}
-            
-            <div className="text-center pt-4">
-              <Link 
-                href="/create-petition"
-                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition-colors"
-              >
-                Create New Petition
-              </Link>
-            </div>
           </div>
         )}
       </div>
