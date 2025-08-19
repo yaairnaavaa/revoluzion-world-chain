@@ -12,6 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 export const AuthButton = () => {
   const [isPending, setIsPending] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [hasAutoTried, setHasAutoTried] = useState(false);
 
   useEffect(() => {
     // Check if MiniKit is installed
@@ -20,26 +21,26 @@ export const AuthButton = () => {
       console.log('🔵 MiniKit installed status:', installed);
       setIsInstalled(installed);
     };
-    
+
     checkInstalled();
-    
+
     // Check periodically in case MiniKit loads later
     const interval = setInterval(checkInstalled, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
   const onClick = useCallback(async () => {
     console.log('🔵 AuthButton clicked - isInstalled:', isInstalled, 'isPending:', isPending);
-    
+
     if (!isInstalled || isPending) {
       console.log('🔴 Cannot proceed - MiniKit not installed or already pending');
       return;
     }
-    
+
     setIsPending(true);
     console.log('🟢 Starting wallet authentication...');
-    
+
     try {
       await walletAuth();
       console.log('🟢 Wallet authentication successful');
@@ -54,10 +55,8 @@ export const AuthButton = () => {
 
   useEffect(() => {
     const authenticate = async () => {
-      console.log('🔵 Auto-authentication check - isInstalled:', isInstalled, 'isPending:', isPending);
-      
-      if (isInstalled && !isPending) {
-        console.log('🟢 Starting auto-authentication...');
+      if (isInstalled && !hasAutoTried) {
+        setHasAutoTried(true);
         setIsPending(true);
         try {
           await walletAuth();
@@ -71,7 +70,7 @@ export const AuthButton = () => {
     };
 
     authenticate();
-  }, [isInstalled, isPending]);
+  }, [isInstalled, hasAutoTried]);
 
   return (
     <LiveFeedback
